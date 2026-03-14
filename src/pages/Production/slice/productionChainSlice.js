@@ -103,11 +103,45 @@ export const markReadyForDelivey = createAsyncThunk(
   }
 );
 
+export const getJobDetails = createAsyncThunk(
+  "productionChain/getJobDetails",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/production-order/get-job-details`, {id:id});
+      successMessage(res.data.message);
+      return  res.data;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
+export const getBomDetailsWithApprovedQty = createAsyncThunk(
+  "productionChain/getBomDetailsWithApprovedQty",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/production-order/get-items-approved-qty`, { id });
+
+      console.log("getBomDetailsWithApprovedQty:", res.data);
+
+      return res.data;
+
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
 const productionChainSlice = createSlice({
   name: "productionChain",
   initialState: {
     data: [],
     batchProduct: [],
+    bomDetails: [],
     loading: false,
     productionLoading: false,
     error: null,
@@ -136,6 +170,19 @@ const productionChainSlice = createSlice({
         state.totalRecords = action.payload.totalRecords;
       })
       .addCase(fetchProductionChainOrder.rejected, (state, action) => {
+        state.productionLoading = false;
+        state.error = action.payload;
+      })
+
+      .addCase(getBomDetailsWithApprovedQty.pending, (state) => {
+        state.productionLoading = true;
+        state.error = null;
+      })
+      .addCase(getBomDetailsWithApprovedQty.fulfilled, (state, action) => {
+        state.productionLoading = false;
+        state.bomDetails = action.payload.data;
+      })
+      .addCase(getBomDetailsWithApprovedQty.rejected, (state, action) => {
         state.productionLoading = false;
         state.error = action.payload;
       })

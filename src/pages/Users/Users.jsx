@@ -14,7 +14,19 @@ import {
   DialogContentText,
   DialogTitle,
   Box,
+  InputAdornment,
+  CircularProgress,
+  useMediaQuery,
+  useTheme,
+  Pagination,
+  Card,
+  CardContent,
+  Divider,
+  Switch,
+  Avatar,
   Tooltip,
+  Alert,
+  Snackbar,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { Formik, Form } from "formik";
@@ -24,6 +36,9 @@ import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
 import FileUploadOutlinedIcon from "@mui/icons-material/FileUploadOutlined";
 import AddIcon from "@mui/icons-material/Add";
+import { FiUser, FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
+import { MdOutlineRemoveRedEye, MdCheckCircle } from "react-icons/md";
+import SearchIcon from "@mui/icons-material/Search";
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
@@ -35,7 +50,7 @@ import Profile from "../../assets/images/profile.jpg";
 import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
 
 import { useDispatch, useSelector } from "react-redux";
-import { addUser, fetchUsers, updateUser, statusUpdate, deleteUser } from "./slices/userSlice";
+import { addUser, fetchUsers, updateUser, statusUpdate, deleteUser, fetchUsersWithSearch } from "./slices/userSlice";
 import { fetchStates } from "../settings/slices/stateSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 import { compressImage } from "../../components/imageCompressor/imageCompressor";
@@ -175,7 +190,10 @@ const Users = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState(null);
   const [compressingImage, setCompressingImage] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
   const tableContainerRef = useRef(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Pagination and search state
   const [pagination, setPagination] = useState({
@@ -185,12 +203,12 @@ const Users = () => {
   const [globalFilter, setGlobalFilter] = useState("");
 
   const {
-    data: tableDatas = [],
+    data: tableData = [],
     loading,
     error,
-    totalRows = 0 // Make sure your slice returns totalRows
+    totalRows = 0
   } = useSelector((state) => state.user);
-  const tableData = tableDatas.data || [];
+
   const { data: states = [] } = useSelector((state) => state.state);
   const { data: userTypes = [] } = useSelector((state) => state.role);
 
@@ -200,11 +218,11 @@ const Users = () => {
   // Fetch users with pagination and search
   useEffect(() => {
     const params = {
-      page: pagination.pageIndex + 1,
-      per_page: pagination.pageSize,
+      pageIndex: pagination.pageIndex + 1, // API expects 1-based page number
+      pageLimit: pagination.pageSize,
       search: globalFilter || "",
     };
-    dispatch(fetchUsers(params));
+    dispatch(fetchUsersWithSearch(params));
   }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter]);
 
   // Fetch states and user types on mount
@@ -213,7 +231,14 @@ const Users = () => {
     dispatch(fetchActiveRoles());
   }, [dispatch]);
 
-  // Handle global filter change with debounce (simple version)
+  // Show error in snackbar
+  useEffect(() => {
+    if (error) {
+      setSnackbar({ open: true, message: error, severity: "error" });
+    }
+  }, [error]);
+
+  // Handle global filter change with debounce
   const handleGlobalFilterChange = useCallback((value) => {
     setGlobalFilter(value);
     setPagination((prev) => ({ ...prev, pageIndex: 0 })); // Reset to first page on search
@@ -239,23 +264,29 @@ const Users = () => {
     setEditData(null);
   }, []);
 
+  const handleSnackbarClose = useCallback(() => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  }, []);
+
   //  Add user
   const handleAdd = useCallback(async (values, { resetForm, setSubmitting }) => {
     setSubmitting(true);
     try {
-      await dispatch(addUser(values)).unwrap(); // throws on error
+      await dispatch(addUser(values)).unwrap();
       resetForm();
-      setOpen(false); // close only after success
+      setOpen(false);
+      // setSnackbar({ open: true, message: "User added successfully", severity: "success" });
 
       // Refresh data after add
       const params = {
-        page: pagination.pageIndex + 1,
-        per_page: pagination.pageSize,
+        pageIndex: pagination.pageIndex + 1,
+        pageLimit: pagination.pageSize,
         search: globalFilter || "",
       };
-      await dispatch(fetchUsers(params)).unwrap();
+      await dispatch(fetchUsersWithSearch(params)).unwrap();
     } catch (error) {
       console.error("Add user failed:", error);
+      // setSnackbar({ open: true, message: error || "Failed to add user", severity: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -269,18 +300,19 @@ const Users = () => {
 
     try {
       await dispatch(deleteUser(deleteDialog.id)).unwrap();
-      // On success close dialog
       setDeleteDialog({ open: false, id: null, name: "", loading: false });
+      // setSnackbar({ open: true, message: "User deleted successfully", severity: "success" });
 
       // Refresh data after delete
       const params = {
-        page: pagination.pageIndex + 1,
-        per_page: pagination.pageSize,
+        pageIndex: pagination.pageIndex + 1,
+        pageLimit: pagination.pageSize,
         search: globalFilter || "",
       };
-      await dispatch(fetchUsers(params)).unwrap();
+      await dispatch(fetchUsersWithSearch(params)).unwrap();
     } catch (error) {
       console.error("Delete failed:", error);
+      // setSnackbar({ open: true, message: error || "Failed to delete user", severity: "error" });
       setDeleteDialog((prev) => ({ ...prev, loading: false }));
     }
   }, [dispatch, deleteDialog.id, pagination.pageIndex, pagination.pageSize, globalFilter]);
@@ -295,21 +327,43 @@ const Users = () => {
     try {
       await dispatch(updateUser({ id: editData.id, ...values })).unwrap();
       resetForm();
-      handleEditClose(); // close only after success
+      handleEditClose();
+      // setSnackbar({ open: true, message: "User updated successfully", severity: "success" });
 
       // Refresh data after update
       const params = {
-        page: pagination.pageIndex + 1,
-        per_page: pagination.pageSize,
+        pageIndex: pagination.pageIndex + 1,
+        pageLimit: pagination.pageSize,
         search: globalFilter || "",
       };
-      await dispatch(fetchUsers(params)).unwrap();
+      await dispatch(fetchUsersWithSearch(params)).unwrap();
     } catch (error) {
       console.error("Update failed:", error);
+      // setSnackbar({ open: true, message: error || "Failed to update user", severity: "error" });
     } finally {
       setSubmitting(false);
     }
   }, [dispatch, editData, pagination.pageIndex, pagination.pageSize, globalFilter, handleEditClose]);
+
+  // Handle status toggle
+  const handleStatusToggle = useCallback(async (row, checked) => {
+    const newStatus = checked ? 1 : 0;
+    try {
+      await dispatch(statusUpdate({ ...row, status: newStatus })).unwrap();
+      // setSnackbar({ open: true, message: "Status updated successfully", severity: "success" });
+
+      // Refresh data
+      const params = {
+        pageIndex: pagination.pageIndex + 1,
+        pageLimit: pagination.pageSize,
+        search: globalFilter || "",
+      };
+      await dispatch(fetchUsersWithSearch(params)).unwrap();
+    } catch (error) {
+      console.error("Status update failed:", error);
+      // setSnackbar({ open: true, message: error || "Failed to update status", severity: "error" });
+    }
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter]);
 
   // Handle image compression
   const handleImageChange = useCallback(async (event, setFieldValue) => {
@@ -318,13 +372,13 @@ const Users = () => {
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      alert("Please upload a valid image file");
+      setSnackbar({ open: true, message: "Please upload a valid image file", severity: "error" });
       return;
     }
 
     // Validate file size (max 5MB before compression)
     if (file.size > 5 * 1024 * 1024) {
-      alert("Image size must be less than 5MB");
+      setSnackbar({ open: true, message: "Image size must be less than 5MB", severity: "error" });
       return;
     }
 
@@ -333,19 +387,172 @@ const Users = () => {
 
       // Compress the image
       const compressed = await compressImage(file, {
-        maxSizeMB: 0.5, // Compress to max 500KB
+        maxSizeMB: 0.5,
         maxWidthOrHeight: 1024,
       });
 
       setFieldValue("image", compressed);
     } catch (error) {
       console.error("Image compression failed:", error);
-      // Continue with original file if compression fails
       setFieldValue("image", file);
     } finally {
       setCompressingImage(false);
     }
   }, []);
+
+  const renderMobileCard = useCallback((row) => {
+    const canUpdate = hasPermission("users.update");
+    const canDelete = hasPermission("users.delete");
+
+    return (
+      <Card key={row.id} sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
+        {/* Header Section - Blue Background */}
+        <Box
+          sx={{
+            bgcolor: "primary.main",
+            p: 1.25,
+            color: "primary.contrastText",
+          }}
+        >
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <Avatar
+                src={row.image ? mediaUrl + row.image : Profile}
+                alt={row.name}
+                sx={{ width: 40, height: 40 }}
+              />
+              <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
+                {row.name}
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Body Section */}
+        <CardContent sx={{ p: 1.5 }}>
+          {/* Details Grid */}
+          <Grid container spacing={1} sx={{ mb: 2 }}>
+            <Grid size={12}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
+                  <FiMail size={16} />
+                </Box>
+                <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                  {row.email}
+                </Typography>
+              </Box>
+            </Grid>
+
+            <Grid size={12}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
+                  <FiPhone size={16} />
+                </Box>
+                <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                  {row.mobile}
+                </Typography>
+              </Box>
+            </Grid>
+
+            <Grid size={12}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
+                  <FiMapPin size={16} />
+                </Box>
+                <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                  {row.address}
+                </Typography>
+              </Box>
+            </Grid>
+
+            <Grid size={12}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
+                  <FiUser size={16} />
+                </Box>
+                <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                  {row.roles?.[0]?.name || 'N/A'}
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
+
+          <Divider sx={{ mb: 1.5 }} />
+
+          {/* Action Buttons */}
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Switch
+              checked={!!row.status}
+              disabled={!canUpdate}
+              onChange={(e) => canUpdate && handleStatusToggle(row, e.target.checked)}
+              sx={{
+                width: 36,
+                height: 20,
+                padding: 0,
+                '& .MuiSwitch-switchBase': {
+                  padding: 0,
+                  margin: '2px',
+                  transitionDuration: '300ms',
+                  '&.Mui-checked': {
+                    transform: 'translateX(16px)',
+                    color: '#fff',
+                    '& + .MuiSwitch-track': {
+                      backgroundColor: '#0d6efd',
+                      opacity: 1,
+                      border: 0,
+                    },
+                  },
+                  '&.Mui-disabled + .MuiSwitch-track': {
+                    opacity: 0.5,
+                  },
+                },
+                '& .MuiSwitch-thumb': {
+                  boxSizing: 'border-box',
+                  width: 16,
+                  height: 16,
+                  boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.2)',
+                },
+                '& .MuiSwitch-track': {
+                  borderRadius: 10,
+                  backgroundColor: '#d9e0e6ff',
+                  opacity: 1,
+                  transition: 'background-color 0.3s',
+                },
+              }}
+            />
+            <Box sx={{ display: "flex", gap: 1.5 }}>
+              {canUpdate && (
+                <IconButton
+                  size="medium"
+                  onClick={() => handleUpdate(row)}
+                  sx={{
+                    bgcolor: "#e3f2fd",
+                    color: "#1976d2",
+                    "&:hover": { bgcolor: "#bbdefb" },
+                  }}
+                >
+                  <BiSolidEditAlt size={20} />
+                </IconButton>
+              )}
+              {canDelete && (
+                <IconButton
+                  size="medium"
+                  onClick={() => handleDeleteClick(row)}
+                  sx={{
+                    bgcolor: "#ffebee",
+                    color: "#d32f2f",
+                    "&:hover": { bgcolor: "#ffcdd2" },
+                  }}
+                >
+                  <RiDeleteBinLine size={20} />
+                </IconButton>
+              )}
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  }, [mediaUrl, hasPermission, handleUpdate, handleDeleteClick, handleStatusToggle]);
 
   const canUpdate = useMemo(() => hasPermission("users.update"), [hasPermission]);
 
@@ -387,8 +594,7 @@ const Users = () => {
             disabled={!canUpdate}
             onChange={(e) => {
               if (!canUpdate) return;
-              const newStatus = e.target.checked ? 1 : 0;
-              dispatch(statusUpdate({ ...row.original, status: newStatus }));
+              handleStatusToggle(row.original, e.target.checked);
             }}
           />
         ),
@@ -427,7 +633,7 @@ const Users = () => {
     }
 
     return baseColumns;
-  }, [dispatch, mediaUrl, canUpdate, handleUpdate, handleDeleteClick, hasAnyPermission, hasPermission]);
+  }, [mediaUrl, canUpdate, handleUpdate, handleDeleteClick, handleStatusToggle, hasAnyPermission, hasPermission]);
 
   //  CSV export
   const downloadCSV = useCallback(() => {
@@ -437,7 +643,7 @@ const Users = () => {
       `"${row.email ?? ""}"`,
       `"${row.mobile ?? ""}"`,
       `"${row.city ?? ""}"`,
-      `"${row.user_type?.name ?? ""}"`,
+      `"${row.roles?.[0]?.name ?? ""}"`,
     ].join(","));
 
     const csvContent = [headers.join(","), ...rows].join("\n");
@@ -463,89 +669,177 @@ const Users = () => {
     window.location.reload();
   }, []);
 
+  // Mobile pagination handlers
+  const handleMobilePageChange = (event, value) => {
+    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
+  };
+
+  const totalPages = Math.ceil(totalRows / pagination.pageSize);
+
   return (
     <>
-      {/* Users Table */}
-      <Grid size={12}>
-        <Paper
-          elevation={0}
-          ref={tableContainerRef}
-          sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff", px: 2, py: 1 }}
-        >
-          <MaterialReactTable
-            columns={columns}
-            data={tableData}
-            manualPagination
-            manualFiltering
-            rowCount={totalRows}
-            state={{
-              pagination,
-              isLoading: loading,
-              globalFilter,
-            }}
-            onPaginationChange={setPagination}
-            onGlobalFilterChange={handleGlobalFilterChange}
-            enableTopToolbar
-            enableColumnFilters={false}
-            enableSorting={false}
-            enableBottomToolbar
-            enableGlobalFilter
-            enableDensityToggle={false}
-            enableColumnActions={false}
-            enableColumnVisibilityToggle={false}
-            initialState={{ density: "compact" }}
-            muiTableContainerProps={{
-              sx: {
-                width: "100%",
-                backgroundColor: "#fff",
-                overflowX: "auto",
-                minWidth: "1200px"
-              },
-            }}
-            muiTablePaperProps={{
-              sx: { backgroundColor: "#fff", boxShadow: "none" }
-            }}
-            renderTopToolbar={({ table }) => (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  width: "100%",
-                  p: 1,
+      <Grid
+        container
+        spacing={2}
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ mb: 2 }}
+      >
+        <Grid item>
+          <Typography variant="h6" className="page-title">
+            Users
+          </Typography>
+        </Grid>
+        <Grid item>
+          {hasPermission("users.create") && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setOpen(true)}
+            >
+              Add User
+            </Button>
+          )}
+        </Grid>
+      </Grid>
+
+      {isMobile ? (
+        // 🔹 MOBILE VIEW (Cards)
+        <>
+          <Box sx={{ minHeight: '100vh' }}>
+            {/* Mobile Search */}
+            <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search users..."
+                value={globalFilter}
+                onChange={(e) => handleGlobalFilterChange(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
                 }}
-              >
-                <Typography variant="h6" className='page-title'>
-                  Users
-                </Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <MRT_GlobalFilterTextField table={table} />
-                  <MRT_ToolbarInternalButtons table={table} />
-                  <Tooltip title="Print">
-                    <IconButton onClick={handlePrint} size="small">
-                      <FiPrinter size={20} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Download CSV">
-                    <IconButton onClick={downloadCSV} size="small">
-                      <BsCloudDownload size={20} />
-                    </IconButton>
-                  </Tooltip>
-                  {hasPermission("users.create") && (
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={() => setOpen(true)}
-                    >
-                      Add User
-                    </Button>
-                  )}
-                </Box>
+              />
+            </Paper>
+
+            {/* Loading State */}
+            {loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <CircularProgress />
               </Box>
             )}
-          />
-        </Paper>
-      </Grid>
+
+            {/* User Cards */}
+            {!loading && tableData.map((row) => renderMobileCard(row))}
+
+            {/* No Data State */}
+            {!loading && tableData.length === 0 && (
+              <Box sx={{ textAlign: 'center', p: 4 }}>
+                <Typography variant="body1" color="text.secondary">
+                  No users found
+                </Typography>
+              </Box>
+            )}
+
+            {/* Mobile Pagination */}
+            {!loading && totalPages > 1 && (
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 3, pb: 2 }}>
+                <Pagination
+                  count={totalPages}
+                  page={pagination.pageIndex + 1}
+                  onChange={handleMobilePageChange}
+                  color="primary"
+                />
+              </Box>
+            )}
+          </Box>
+          {/* Mobile Pagination - FIXED: Use totalRows instead of hardcoded 10 */}
+          {/* <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+            <Pagination
+              count={Math.ceil(totalRows / pagination.pageSize)}
+              page={pagination.pageIndex + 1}
+              onChange={handleMobilePageChange}
+              color="primary"
+            />
+          </Box> */}
+        </>
+      ) : (
+        // 🔹 DESKTOP VIEW (Table)
+        <Grid size={12}>
+          <Paper
+            elevation={0}
+            ref={tableContainerRef}
+            sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff", px: 2, py: 1 }}
+          >
+            <MaterialReactTable
+              columns={columns}
+              data={tableData}
+              manualPagination
+              manualFiltering
+              rowCount={totalRows}
+              state={{
+                pagination,
+                isLoading: loading,
+                globalFilter,
+              }}
+              onPaginationChange={setPagination}
+              onGlobalFilterChange={handleGlobalFilterChange}
+              enableTopToolbar
+              enableColumnFilters={false}
+              enableSorting={false}
+              enableBottomToolbar
+              enableGlobalFilter
+              enableDensityToggle={false}
+              enableColumnActions={false}
+              enableColumnVisibilityToggle={false}
+              initialState={{ density: "compact" }}
+              muiTableContainerProps={{
+                sx: {
+                  width: "100%",
+                  backgroundColor: "#fff",
+                  overflowX: "auto",
+                  minWidth: "1200px"
+                },
+              }}
+              muiTablePaperProps={{
+                sx: { backgroundColor: "#fff", boxShadow: "none" }
+              }}
+              renderTopToolbar={({ table }) => (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    p: 1,
+                  }}
+                >
+                  <Typography variant="h6" className='page-title'>
+                    Users
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <MRT_GlobalFilterTextField table={table} />
+                    <MRT_ToolbarInternalButtons table={table} />
+                    <Tooltip title="Print">
+                      <IconButton onClick={handlePrint} size="small">
+                        <FiPrinter size={20} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Download CSV">
+                      <IconButton onClick={downloadCSV} size="small">
+                        <BsCloudDownload size={20} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Box>
+              )}
+            />
+          </Paper>
+        </Grid>
+      )}
 
       {/* Add Modal */}
       <BootstrapDialog onClose={() => setOpen(false)} open={open} fullWidth maxWidth="sm">
@@ -577,7 +871,8 @@ const Users = () => {
                       id="name"
                       name="name"
                       label="Name *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       value={values.name}
@@ -592,7 +887,8 @@ const Users = () => {
                       id="email"
                       name="email"
                       label="Email Address *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       value={values.email}
@@ -607,7 +903,8 @@ const Users = () => {
                       id="mobile"
                       name="mobile"
                       label="Mobile *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       value={values.mobile}
@@ -624,7 +921,8 @@ const Users = () => {
                       name="user_type_id"
                       select
                       label="Role *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       value={values.user_type_id}
@@ -648,7 +946,8 @@ const Users = () => {
                       id="password"
                       name="password"
                       label="Password *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       type="password"
                       margin="dense"
@@ -660,7 +959,6 @@ const Users = () => {
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
-                    {/* Upload Image */}
                     <Grid container spacing={2} alignItems="center" mt={1}>
                       <Grid size={8}>
                         <Button
@@ -679,11 +977,6 @@ const Users = () => {
                             onChange={(event) => handleImageChange(event, setFieldValue)}
                           />
                         </Button>
-                        {touched.image && errors.image && (
-                          <Typography variant="caption" color="error">
-                            {errors.image}
-                          </Typography>
-                        )}
                       </Grid>
                       <Grid size={4}>
                         {values.image && (
@@ -708,7 +1001,8 @@ const Users = () => {
                       id="state_id"
                       name="state_id"
                       label="State *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       value={values.state_id}
@@ -732,7 +1026,8 @@ const Users = () => {
                       id="city"
                       name="city"
                       label="City *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       value={values.city}
@@ -747,7 +1042,8 @@ const Users = () => {
                       id="zip_code"
                       name="zip_code"
                       label="PIN Code *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       value={values.zip_code}
@@ -763,7 +1059,8 @@ const Users = () => {
                       id="address"
                       name="address"
                       label="Address *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       multiline
@@ -803,11 +1100,12 @@ const Users = () => {
             state_id: editData?.state_id || "",
             city: editData?.city || "",
             address: editData?.address || "",
-            user_type_id: editData?.user_type_id || "",
+            user_type_id: editData?.roles[0]?.id || "",
             zip_code: editData?.zip_code || "",
             password: "",
             image: null,
           }}
+
           validationSchema={editValidationSchema}
           enableReinitialize
           onSubmit={handleEditSubmit}
@@ -821,7 +1119,8 @@ const Users = () => {
                       id="name"
                       name="name"
                       label="Name *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       value={values.name}
@@ -836,7 +1135,8 @@ const Users = () => {
                       id="email"
                       name="email"
                       label="Email Address *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       value={values.email}
@@ -851,7 +1151,8 @@ const Users = () => {
                       id="mobile"
                       name="mobile"
                       label="Mobile *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       value={values.mobile}
@@ -868,7 +1169,8 @@ const Users = () => {
                       name="user_type_id"
                       select
                       label="Role *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       value={values.user_type_id}
@@ -880,8 +1182,9 @@ const Users = () => {
                       <MenuItem value="">
                         <em>Select User Type</em>
                       </MenuItem>
+
                       {userTypes.map((option) => (
-                        <MenuItem key={option.id} value={option.name}>
+                        <MenuItem key={option.id} value={option.id}>
                           {option.name}
                         </MenuItem>
                       ))}
@@ -892,7 +1195,8 @@ const Users = () => {
                       id="password"
                       name="password"
                       label="Password (leave blank to keep current)"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       type="password"
                       margin="dense"
@@ -904,7 +1208,6 @@ const Users = () => {
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
-                    {/* Upload Image */}
                     <Grid container spacing={2} alignItems="center" mt={1}>
                       <Grid size={8}>
                         <Button
@@ -923,11 +1226,6 @@ const Users = () => {
                             onChange={(event) => handleImageChange(event, setFieldValue)}
                           />
                         </Button>
-                        {touched.image && errors.image && (
-                          <Typography variant="caption" color="error">
-                            {errors.image}
-                          </Typography>
-                        )}
                       </Grid>
                       <Grid size={4}>
                         <img
@@ -959,7 +1257,8 @@ const Users = () => {
                       id="state_id"
                       name="state_id"
                       label="State *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       value={values.state_id}
@@ -981,8 +1280,10 @@ const Users = () => {
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       id="city"
-                      name="city" label="City *"
-                      variant="standard"
+                      name="city"
+                      label="City *"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       value={values.city}
@@ -997,7 +1298,8 @@ const Users = () => {
                       id="zip_code"
                       name="zip_code"
                       label="PIN Code *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       value={values.zip_code}
@@ -1013,7 +1315,8 @@ const Users = () => {
                       id="address"
                       name="address"
                       label="Address *"
-                      variant="standard"
+                      variant="outlined"
+                      size="small"
                       fullWidth
                       margin="dense"
                       multiline
@@ -1078,6 +1381,17 @@ const Users = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Snackbar for notifications */}
+      {/* <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar> */}
     </>
   );
 };

@@ -2,11 +2,93 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust path
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 // Fetch all products
+// export const fetchProducts = createAsyncThunk(
+//   "product/fetchAll",
+//   async () => {
+//     const res = await api.get("admin/product/get-data");
+//     return res.data.data;
+//   }
+// );
+
 export const fetchProducts = createAsyncThunk(
   "product/fetchAll",
-  async () => {
-    const res = await api.get("admin/product/get-data");
-    return res.data.data;
+  async ({ page = 1, perPage = 10, search = "" } = {}, { rejectWithValue }) => {
+    try {
+      const params = {
+        page,
+        per_page: perPage,
+      };
+      
+      if (search) {
+        params.search = search;
+      }
+
+      const res = await api.get("admin/product/get-data", { params });
+      return res.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch products");
+    }
+  }
+);
+export const fetchProductsWithSearch = createAsyncThunk(
+  "product/fetchProductsWithSearch",
+  async ({ page = 1, perPage = 10, search = "" } = {}, { rejectWithValue }) => {
+    try {
+      const params = {
+        page,
+        per_page: perPage,
+      };
+      
+      if (search) {
+        params.search = search;
+      }
+
+      const res = await api.get("admin/product/get-data", { params });
+      return res.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch products");
+    }
+  }
+);
+
+  export const getDiscardedData = createAsyncThunk(
+    "product/getDiscardedData",
+    async ({ page = 1, perPage = 10, search = "" } = {}, { rejectWithValue }) => {
+      try {
+        const params = {
+          page,
+          per_page: perPage,
+        };
+        
+        if (search) {
+          params.search = search;
+        }
+
+        const res = await api.get("admin/discard-product/get-data", { params });
+        return res.data;
+      } catch (error) {
+        return rejectWithValue(error.response?.data?.message || "Failed to fetch products");
+      }
+    }
+  );
+
+// Discard stock
+export const discardStock = createAsyncThunk(
+  "product/discardStock",
+  async ({ id, qty, remark }, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/discard-product/remove-from-inventory`, {
+        product_id: id,
+        qty,
+        remark,
+      });
+      successMessage(res.data.message);
+      return res.data.data?.product || res.data.product; // Handle both response structures
+    } catch (error) {
+      const errMsg = error.response?.data?.message || error.response?.data?.error || "Failed to discard stock";
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
   }
 );
 
@@ -110,24 +192,83 @@ const productSlice = createSlice({
   name: "product",
   initialState: {
     data: [],
+    searchData: [],
     loading: false,
     error: null,
+    meta: {
+      current_page: 1,
+      last_page: 1,
+      per_page: 10,
+      total: 0,
+      from: 0,
+      to: 0,
+    },
+    discardedData: [],
+    discardedLoading: false,
+    discardedError: null,
+    discardedTotal: 0,
+    discardedCurrentPage: 1,
+    discardedPerPage: 10,
+    discardedLastPage: 1,
+    searchTerm: "",
+  },
+  reducers: {
+    setSearchTerm: (state, action) => {
+      state.searchTerm = action.payload;
+    },
+    clearSearch: (state) => {
+      state.searchTerm = "";
+    },
   },
   reducers: {},
   extraReducers: (builder) => {
     builder
       // Fetch
-      .addCase(fetchProducts.pending, (state) => {
+       .addCase(fetchProducts.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchProducts.fulfilled, (state, action) => {
         state.loading = false;
         state.data = action.payload;
       })
+      .addCase(fetchProductsWithSearch.fulfilled, (state, action) => {
+        state.loading = false;
+        state.searchData = Array.isArray(action.payload.data) ? action.payload.data : [];
+        state.meta = action.payload.meta || state.meta;
+      })
       .addCase(fetchProducts.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message;
+        state.error = action.payload;
       })
+
+      // Fetch getDiscardedData
+       .addCase(getDiscardedData.pending, (state) => {
+        state.discardedLoading = true;
+        state.discardedError = null;
+      })
+      .addCase(getDiscardedData.fulfilled, (state, action) => {
+        state.discardedLoading = false;
+        state.discardedData = action.payload.data || [];
+        state.discardedTotal = action.payload.total || 0;
+        state.discardedCurrentPage = action.payload.current_page || 1;
+        state.discardedPerPage = action.payload.per_page || 10;
+        state.discardedLastPage = action.payload.last_page || 1;
+      })
+      .addCase(getDiscardedData.rejected, (state, action) => {
+        state.discardedLoading = false;
+        state.discardedError = action.payload;
+        state.discardedData = [];
+      })
+      
+      // Discard stock
+      .addCase(discardStock.fulfilled, (state, action) => {
+        const updatedProduct = action.payload;
+        state.data = state.data.map((item) =>
+          item.id === updatedProduct.id ? updatedProduct : item
+        );
+      })
+      
       // Add
       .addCase(addProduct.fulfilled, (state, action) => {
         state.data.unshift(action.payload);
@@ -160,5 +301,5 @@ const productSlice = createSlice({
 
   },
 });
-
+export const { setSearchTerm, clearSearch } = productSlice.actions;
 export default productSlice.reducer;

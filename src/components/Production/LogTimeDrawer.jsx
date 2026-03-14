@@ -27,6 +27,7 @@ import {
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { TimePicker } from "@mui/x-date-pickers/TimePicker";
 import { RiDeleteBinLine } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
 import dayjs from "dayjs";
@@ -36,60 +37,35 @@ import {
   fetchLabourLogs,
 } from "../../pages/Production/slice/labourLogSlice";
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 const formatDate = (date) => {
   if (!date) return "";
-
-  if (typeof date === 'string') {
-    if (/^\d{2}-\d{2}-\d{4}$/.test(date)) {
-      return date;
-    }
+  if (typeof date === "string") {
+    if (/^\d{2}-\d{2}-\d{4}$/.test(date)) return date;
     if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      const [year, month, day] = date.split('-');
+      const [year, month, day] = date.split("-");
       return `${day}-${month}-${year}`;
     }
     const parsed = dayjs(date);
-    if (parsed.isValid()) {
-      return parsed.format("DD-MM-YYYY");
-    }
-    return date;
+    return parsed.isValid() ? parsed.format("DD-MM-YYYY") : date;
   }
-
   return date.format ? date.format("DD-MM-YYYY") : date;
 };
 
-const parseOvertimeToMinutes = (overtime) => {
-  if (!overtime || overtime.trim() === "") return 0;
-
-  const trimmed = overtime.trim();
-
-  // Check for decimal hours (e.g., "2.5")
-  if (/^\d+\.?\d*$/.test(trimmed)) {
-    const hours = parseFloat(trimmed);
-    if (isNaN(hours) || hours < 0) return 0;
-    return Math.round(hours * 60);
-  }
-
-  // Parse "Xh Ym" format
-  const hoursMatch = trimmed.match(/(\d+)h/);
-  const minutesMatch = trimmed.match(/(\d+)m/);
-
-  const hours = hoursMatch ? parseInt(hoursMatch[1]) : 0;
-  const minutes = minutesMatch ? parseInt(minutesMatch[1]) : 0;
-
-  const totalMinutes = (hours * 60) + minutes;
-  return totalMinutes >= 0 ? totalMinutes : 0;
+// Format a dayjs time object → "HH:mm" string for API
+const formatTime = (time) => {
+  if (!time) return "";
+  return time.format ? time.format("HH:mm") : time;
 };
 
-const formatOvertimeDisplay = (overtimeMinutes) => {
-  if (!overtimeMinutes || overtimeMinutes === 0) return "-";
-
-  const hours = Math.floor(overtimeMinutes / 60);
-  const minutes = overtimeMinutes % 60;
-
-  if (hours === 0) return `${minutes}m`;
-  if (minutes === 0) return `${hours}h`;
-  return `${hours}h ${minutes}m`;
+// Display "HH:mm" string nicely
+const displayTime = (timeStr) => {
+  if (!timeStr) return "-";
+  return timeStr; // already "HH:mm"
 };
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
   const dispatch = useDispatch();
@@ -100,14 +76,16 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
   );
 
   const [selectedLabour, setSelectedLabour] = useState(null);
-  const [logDate, setLogDate] = useState(null);
-  const [overtime, setOvertime] = useState("");
-  const [logTimeItems, setLogTimeItems] = useState([]);
-  const [openDelete, setOpenDelete] = useState(false);
-  const [deleteIndex, setDeleteIndex] = useState(null);
+  const [logDate, setLogDate]               = useState(null);
+  const [signIn, setSignIn]                 = useState(null);
+  const [signOut, setSignOut]               = useState(null);
+  const [logTimeItems, setLogTimeItems]     = useState([]);
+  const [openDelete, setOpenDelete]         = useState(false);
+  const [deleteIndex, setDeleteIndex]       = useState(null);
   const [validationError, setValidationError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting]         = useState(false);
 
+  // Load data when drawer opens
   useEffect(() => {
     if (open && product) {
       dispatch(fetchActiveLabours());
@@ -115,44 +93,36 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
     }
   }, [open, product, dispatch]);
 
+  // Reset form when drawer closes
   useEffect(() => {
     if (!open) {
       setLogTimeItems([]);
       setSelectedLabour(null);
       setLogDate(null);
-      setOvertime("");
+      setSignIn(null);
+      setSignOut(null);
       setValidationError("");
     }
   }, [open]);
 
+  // Clear validation error when user changes any field
   useEffect(() => {
-    if (validationError) {
-      setValidationError("");
-    }
-  }, [selectedLabour, logDate, overtime]);
+    if (validationError) setValidationError("");
+  }, [selectedLabour, logDate, signIn, signOut]);
 
+  // ── Duplicate check ────────────────────────────────────────────────────────
   const isLabourDateDuplicate = (labourId, date) => {
     const dateStr = formatDate(date);
-
     const duplicateInNew = logTimeItems.some(
       (item) => item.labour.id === labourId && formatDate(item.date) === dateStr
     );
-
     const duplicateInExisting = existingLogs.some(
       (log) => log.labour_id === labourId && formatDate(log.date) === dateStr
     );
-
     return duplicateInNew || duplicateInExisting;
   };
 
-  const validateOvertimeFormat = (value) => {
-    if (!value || value.trim() === "") return true;
-
-    const trimmed = value.trim();
-
-    return /^\d+(\.\d+)?$/.test(trimmed);
-  };
-
+  // ── Add entry ──────────────────────────────────────────────────────────────
   const handleAddLogTime = () => {
     setValidationError("");
 
@@ -160,12 +130,22 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
       setValidationError("Please select an employee");
       return;
     }
-
     if (!logDate) {
       setValidationError("Please select a date");
       return;
     }
-
+    if (!signIn) {
+      setValidationError("Please select a sign-in time");
+      return;
+    }
+    if (!signOut) {
+      setValidationError("Please select a sign-out time");
+      return;
+    }
+    if (signOut.isBefore(signIn) || signOut.isSame(signIn)) {
+      setValidationError("Sign-out time must be after sign-in time");
+      return;
+    }
     if (isLabourDateDuplicate(selectedLabour.id, logDate)) {
       setValidationError(
         `${selectedLabour.name} has already logged time for ${formatDate(logDate)}`
@@ -173,37 +153,33 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
       return;
     }
 
-    if (overtime && !validateOvertimeFormat(overtime)) {
-      setValidationError(
-        "Invalid overtime format. Use decimal hours only (e.g., 2.5)"
-      );
-      return;
-    }
+    setLogTimeItems((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        labour: selectedLabour,
+        date: logDate,
+        sign_in: formatTime(signIn),
+        sign_out: formatTime(signOut),
+        isNew: true,
+      },
+    ]);
 
-    const overtimeMinutes = parseOvertimeToMinutes(overtime);
-
-    const newEntry = {
-      id: Date.now(),
-      labour: selectedLabour,
-      date: logDate,
-      overtime: overtimeMinutes,
-      isNew: true,
-    };
-
-    setLogTimeItems((prev) => [...prev, newEntry]);
-
-    // Reset form
+    // Reset form fields
     setSelectedLabour(null);
     setLogDate(null);
-    setOvertime("");
+    setSignIn(null);
+    setSignOut(null);
   };
 
+  // ── Delete pending entry ───────────────────────────────────────────────────
   const handleDeleteLogTime = (index) => {
     setLogTimeItems((prev) => prev.filter((_, i) => i !== index));
     setOpenDelete(false);
     setDeleteIndex(null);
   };
 
+  // ── Submit to API ──────────────────────────────────────────────────────────
   const handleUpdateLogTime = async () => {
     if (logTimeItems.length === 0 || !product) return;
 
@@ -217,7 +193,8 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
       logTimeItems.forEach((item) => {
         formData.append("labour_id[]", item.labour.id);
         formData.append("date[]", formatDate(item.date));
-        formData.append("overtime[]", item.overtime || 0);
+        formData.append("sign_in[]", item.sign_in);
+        formData.append("sign_out[]", item.sign_out);
       });
 
       const res = await dispatch(storeLabourLog(formData));
@@ -225,11 +202,7 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
       if (!res.error) {
         setLogTimeItems([]);
         await dispatch(fetchLabourLogs(product.id));
-
-        if (onSuccess) {
-          onSuccess();
-        }
-
+        if (onSuccess) onSuccess();
         onClose();
       } else {
         setValidationError("Failed to save labour logs. Please try again.");
@@ -244,35 +217,19 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
 
   const loading = labourLoading || logsLoading;
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
-      <Drawer
-        anchor="right"
-        open={open}
-        onClose={onClose}
-        sx={{ zIndex: 9999 }}
-      >
-        <Box sx={{ width: 700, p: 2 }}>
-          <Typography
-            variant="h6"
-            fontWeight={500}
-            fontSize="18px"
-            marginBottom="6px"
-          >
+      <Drawer anchor="right" open={open} onClose={onClose} sx={{ zIndex: 9999 }}>
+        <Box sx={{ width: 750, p: 2 }}>
+          <Typography variant="h6" fontWeight={500} fontSize="18px" marginBottom="6px">
             Log Time
           </Typography>
           <Divider />
 
-          <Box
-            mt={2}
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-          >
+          <Box mt={2} display="flex" justifyContent="space-between" alignItems="center">
             <Typography variant="subtitle1">{product?.item_name}</Typography>
-            <Typography variant="subtitle1">
-              {product?.group?.trim()}
-            </Typography>
+            <Typography variant="subtitle1">{product?.group?.trim()}</Typography>
           </Box>
 
           {validationError && (
@@ -281,9 +238,9 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
             </Alert>
           )}
 
+          {/* ── Form Row ── */}
           <Box
             display="flex"
-            justifyContent="space-between"
             alignItems="center"
             paddingTop="15px"
             paddingBottom="10px"
@@ -292,80 +249,93 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
           >
             {loading ? (
               <>
-                <Skeleton variant="rounded" width={280} height={40} />
-                <Skeleton variant="rounded" width={130} height={40} />
-                <Skeleton variant="rounded" width={140} height={40} />
-                <Skeleton variant="rounded" width={70} height={40} />
+                <Skeleton variant="rounded" width={220} height={40} />
+                <Skeleton variant="rounded" width={120} height={40} />
+                <Skeleton variant="rounded" width={120} height={40} />
+                <Skeleton variant="rounded" width={120} height={40} />
+                <Skeleton variant="rounded" width={60} height={40} />
               </>
             ) : (
-              <>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                {/* Employee */}
                 <Autocomplete
                   disablePortal
                   options={labourData || []}
                   value={selectedLabour}
-                  onChange={(e, val) => setSelectedLabour(val)}
-                  getOptionLabel={(option) =>
-                    option?.name
-                      ? `${option.code || option.id} (${option.name})`
-                      : ""
-                  }
-                  isOptionEqualToValue={(option, value) =>
-                    value && option.id === value.id
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Employee"
-                      placeholder="Search employee"
-                      size="small"
-                    />
-                  )}
-                  sx={{ width: 280 }}
-                />
-
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DatePicker
-                    label="Date"
-                    value={logDate}
-                    onChange={setLogDate}
-                    maxDate={dayjs()}
-                    slotProps={{
-                      textField: { size: "small" },
-                      popper: { sx: { zIndex: 999999 } },
-                    }}
-                    sx={{ width: 130 }}
-                  />
-                </LocalizationProvider>
-
-                <TextField
-                  label="Overtime (optional)"
-                  placeholder="e.g., 2.5"
-                  size="small"
-                  value={overtime}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // allow only digits and one decimal point
-                    if (/^\d*\.?\d*$/.test(value)) {
-                      setOvertime(value);
+                  onChange={(e, val) => {
+                    setSelectedLabour(val);
+                    if (val?.shift?.start_time) {
+                      setSignIn(dayjs(val.shift.start_time, "HH:mm"));
+                    } else {
+                      setSignIn(null);
+                    }
+                    if (val?.shift?.end_time) {
+                      setSignOut(dayjs(val.shift.end_time, "HH:mm"));
+                    } else {
+                      setSignOut(null);
                     }
                   }}
-                  sx={{ width: 140 }}
-                  // helperText="Enter hours in decimal (e.g., 2.5)"
-                  FormHelperTextProps={{ sx: { fontSize: "0.65rem", mt: 0.5 } }}
+                  getOptionLabel={(option) =>
+                    option?.name ? `${option.name} (${option.labour_code || option.id})` : ""
+                  }
+                  isOptionEqualToValue={(option, value) => value && option.id === value.id}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Employee" placeholder="Search employee" size="small" />
+                  )}
+                  sx={{ width: 220 }}
+                />
+
+                {/* Date */}
+                <DatePicker
+                  label="Date"
+                  value={logDate}
+                  onChange={setLogDate}
+                  maxDate={dayjs()}
+                  slotProps={{
+                    textField: { size: "small" },
+                    popper: { sx: { zIndex: 999999 } },
+                  }}
+                  sx={{ width: 130 }}
+                />
+
+                {/* Sign In */}
+                <TimePicker
+                  label="Sign In"
+                  value={signIn}
+                  onChange={setSignIn}
+                  slotProps={{
+                    textField: { size: "small" },
+                    popper: { sx: { zIndex: 999999 } },
+                  }}
+                  sx={{ width: 130 }}
+                />
+
+                {/* Sign Out */}
+                <TimePicker
+                  label="Sign Out"
+                  value={signOut}
+                  onChange={setSignOut}
+                  minTime={signIn ?? undefined}
+                  slotProps={{
+                    textField: { size: "small" },
+                    popper: { sx: { zIndex: 999999 } },
+                  }}
+                  sx={{ width: 130 }}
                 />
 
                 <Button
                   variant="contained"
-                  sx={{ marginTop: 0 }}
                   onClick={handleAddLogTime}
-                  disabled={!selectedLabour || !logDate}
+                  disabled={!selectedLabour || !logDate || !signIn || !signOut}
+                  sx={{ marginTop: 0 }}
                 >
                   Add
                 </Button>
-              </>
+              </LocalizationProvider>
             )}
           </Box>
 
+          {/* ── Table ── */}
           <TableContainer sx={{ mt: 4 }}>
             {loading ? (
               <>
@@ -377,22 +347,24 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
               <Table sx={{ minWidth: "100%" }} size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>Emp Code (Emp Name)</TableCell>
+                    <TableCell>Emp Name (Emp Code)</TableCell>
                     <TableCell>Date</TableCell>
-                    <TableCell>Overtime</TableCell>
+                    <TableCell>Sign In</TableCell>
+                    <TableCell>Sign Out</TableCell>
                     <TableCell>Action</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {/* Show existing logs from server */}
+                  {/* Existing logs from server */}
                   {existingLogs.map((log) => (
                     <TableRow key={`existing-${log.id}`}>
                       <TableCell>
-                        {log.labour?.code || log.labour_id}
-                        <br />({log.labour?.name})
+                        {log.labour?.name}
+                        <br />({log.labour?.labour_code || log.labour_id})
                       </TableCell>
                       <TableCell>{formatDate(log.date)}</TableCell>
-                      <TableCell>{formatOvertimeDisplay(log.overtime)}</TableCell>
+                      <TableCell>{displayTime(log.sign_in)}</TableCell>
+                      <TableCell>{displayTime(log.sign_out)}</TableCell>
                       <TableCell>
                         <Typography variant="caption" color="text.secondary">
                           Saved
@@ -401,18 +373,16 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
                     </TableRow>
                   ))}
 
-                  {/* Show newly added items */}
+                  {/* Newly added (pending) items */}
                   {logTimeItems.map((item, index) => (
-                    <TableRow
-                      key={item.id}
-                      sx={{ backgroundColor: "action.hover" }}
-                    >
+                    <TableRow key={item.id} sx={{ backgroundColor: "action.hover" }}>
                       <TableCell>
-                        {item.labour?.code || item.labour?.id}
-                        <br />({item.labour?.name})
+                        {item.labour?.name}
+                        <br />({item.labour?.labour_code || item.labour?.id})
                       </TableCell>
                       <TableCell>{formatDate(item.date)}</TableCell>
-                      <TableCell>{formatOvertimeDisplay(item.overtime)}</TableCell>
+                      <TableCell>{displayTime(item.sign_in)}</TableCell>
+                      <TableCell>{displayTime(item.sign_out)}</TableCell>
                       <TableCell>
                         <Tooltip title="Delete" arrow>
                           <IconButton
@@ -432,7 +402,7 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
                   {/* Empty state */}
                   {existingLogs.length === 0 && logTimeItems.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={4} align="center">
+                      <TableCell colSpan={5} align="center">
                         <Typography variant="body2" color="text.secondary">
                           No log time entries
                         </Typography>
@@ -444,6 +414,7 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
             )}
           </TableContainer>
 
+          {/* ── Footer Buttons ── */}
           <Box mt={2} sx={{ display: "flex", justifyContent: "end", gap: 1 }}>
             <Button variant="outlined" onClick={onClose} disabled={submitting}>
               Cancel
@@ -460,16 +431,11 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
       </Drawer>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={openDelete}
-        onClose={() => setOpenDelete(false)}
-        sx={{ zIndex: 999999 }}
-      >
+      <Dialog open={openDelete} onClose={() => setOpenDelete(false)} sx={{ zIndex: 999999 }}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent style={{ width: "300px" }}>
           <DialogContentText>
-            Are you sure you want to delete this entry? This action cannot be
-            undone.
+            Are you sure you want to delete this entry? This action cannot be undone.
           </DialogContentText>
         </DialogContent>
         <DialogActions>

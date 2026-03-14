@@ -169,7 +169,7 @@ export default function TentativeItemDrawer({
             fontSize="18px"
             marginBottom="6px"
           >
-            Tentative Items
+            BOM Items
           </Typography>
           <Divider />
 

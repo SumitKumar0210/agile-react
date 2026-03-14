@@ -76,14 +76,14 @@ const ViewPurchaseOrder = () => {
           <Typography variant="h6">Order Details</Typography>
         </Grid>
         <Grid>
-          {/* <Button
+          <Button
             variant="contained"
             startIcon={<AddIcon />}
             component={Link}
             to="/vendor/purchase-order/create"
           >
             Create PO
-          </Button> */}
+          </Button>
         </Grid>
       </Grid>
 
@@ -125,17 +125,17 @@ const ViewPurchaseOrder = () => {
                         color="success"
                         onClick={() => {handleApprove(id)}}
                         startIcon={<MdOutlineCheckCircle />} >
-                        Move to QC
+                        Approve
                       </Button>
                     
                   )}
-                  {/* <Button
+                  <Button
                     variant="contained"
                     color="secondary"
                     startIcon={<BiSolidEditAlt />}
                     component={Link} to={`/vendor/purchase-order/edit/${id}`} >
                     Edit PO
-                  </Button> */}
+                  </Button>
 
                 </Stack>
               </Grid>

@@ -16,15 +16,18 @@ import {
 } from "material-react-table";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
-import { MdCalculate } from "react-icons/md";
+import { MdCalculate, MdReceiptLong  } from "react-icons/md";
+
 import { useDispatch, useSelector } from "react-redux";
 import { updateProductRRP } from "../settings/slices/productSlice";
 import { fetchReadyProduct } from "./slice/readyProductSlice";
 import RRPDialog from "../../components/Rrpdialog/Rrpdialog";
+import { useNavigate } from "react-router-dom";
 
 const RRPManagement = () => {
   const dispatch = useDispatch();
   const { data: rawData = [], loading } = useSelector((state) => state.readyProduct);
+  const navigate = useNavigate();
 
   const tableContainerRef = useRef(null);
   const [openRRPDialog, setOpenRRPDialog] = useState(false);
@@ -64,6 +67,7 @@ const RRPManagement = () => {
   }, [rawData]);
 
   const handleOpenRRPDialog = (product) => {
+   
     setSelectedProduct(product);
     setOpenRRPDialog(true);
   };
@@ -160,6 +164,7 @@ const RRPManagement = () => {
       enableSorting: false,
       enableColumnFilter: false,
       Cell: ({ row }) => (
+        <>
         <Tooltip title="Calculate/Update RRP">
           <IconButton
             color="primary"
@@ -169,6 +174,16 @@ const RRPManagement = () => {
             <MdCalculate size={20} />
           </IconButton>
         </Tooltip>
+        <Tooltip title="RRP Cost Sheet">
+          <IconButton
+            color="primary"
+            size="small"
+            onClick={() => navigate(`/production/cost-sheet/${row.original.id}`)}
+          >
+            <MdReceiptLong  size={20} />
+          </IconButton>
+        </Tooltip>
+        </>
       ),
     },
   ], []);

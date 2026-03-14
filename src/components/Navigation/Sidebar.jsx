@@ -30,7 +30,7 @@ import { BsBoxSeam, BsTag  } from "react-icons/bs";
 import Logo from "../../assets/images/logo.svg";
 import { useAuth } from "../../context/AuthContext";
 
-const drawerWidth = 220;
+const drawerWidth = 220; 
 
 /**
  * menuSections:
@@ -67,6 +67,7 @@ const menuSections = [
         ],
         children: [
           { text: "Dashboard", to: "/vendor/dashboard", icon: <MdOutlineDashboard /> },
+          {text: "CCS List", to: "/ccs", icon: <RiFileList3Line /> },
           {
             text: "Purchase Order", to: "/vendor/purchase-order", icon: <RiFileList3Line />, anyPermissions: ["purchase_order.create",
               "purchase_order.delete",
@@ -95,7 +96,10 @@ const menuSections = [
             ]
           },
           { text: "Vendor list", to: "/vendor/list", icon: <LuTable />, anyPermissions: ["vendor_lists.read"] },
-          { text: "Stock", to: "/stocks", icon: <BsBoxSeam />, anyPermissions: ["stocks.read"] },
+          { text: "Movement", to: "/stocks", icon: <BsBoxSeam />, anyPermissions: ["stocks.read"] },
+          {
+            text: "Inventory", to: "/material-inventory", icon: <BsBoxSeam />, anyPermissions: ["product_stocks.read"]
+          },
         ],
       },
       {
@@ -157,6 +161,13 @@ const menuSections = [
         ],
         children: [
           {
+            text: "IH Production Order", to: "/production/orders", icon: <MdOutlineDashboard />, anyPermissions: [
+              "company_orders.read",
+              "company_orders.update",
+              "company_orders.create",
+            ]
+          },
+          {
             text: "Production Chain", to: "/production/production-chain", icon: <RiFlowChart />, anyPermissions: [
               "productions.switch_to",
               "productions.change_supervisor",
@@ -170,16 +181,8 @@ const menuSections = [
               "productions.ready_for_delivery"
             ]
           },
-          {
-            text: "Order", to: "/production/orders", icon: <MdOutlineDashboard />, anyPermissions: [
-              "company_orders.read",
-              "company_orders.update",
-              "company_orders.create",
-            ]
-          },
-          {
-            text: "Product Stocks", to: "/product/stocks", icon: <BsBoxSeam />, anyPermissions:["product_stocks.read"]
-          },
+          
+        
           {
             text: "RRP", to: "/production/rrp-calculation", icon: <BsTag  />, permission:"rrp.read"
           },
@@ -220,6 +223,12 @@ const menuSections = [
               "dispatch_product.collect_payment",
             ]
           },
+          {
+            text: "Product Stocks", to: "/product/stocks", icon: <BsBoxSeam />, anyPermissions: ["product_stocks.read"]
+          },
+          {
+            text: "Discarded Product", to: "/discarded-product", icon: <BsBoxSeam />, anyPermissions: ["product_stocks.read"]
+          },
         ],
       },
       {
@@ -259,6 +268,13 @@ const menuSections = [
             ]
           },
         ],
+      },
+      {
+        text: "Logs", to: "/logs", icon: <MdOutlineDashboard />, anyPermissions: [
+          "logs.customer_payment",
+          "logs.production",
+          "logs.vendor_payment",
+        ]
       },
       {
         text: "Settings", to: "/settings", icon: <MdOutlineDashboard />, anyPermissions: [

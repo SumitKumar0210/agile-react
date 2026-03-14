@@ -176,12 +176,32 @@ export const getPreviousPO = createAsyncThunk(
 );
 
 
+export const getProductProductionLog = createAsyncThunk(
+  "order/getProductProductionLog",
+  async(id, { rejectWithValue}) => {
+
+    try{
+      const res = await api.post(`admin/production-order/product-production-log`, {
+        id: id,
+      });
+      successMessage(res.data.message);
+      return res.data.data;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
+
 
 const orderSlice = createSlice({
   name: "order",
   initialState: {
     data: [],
     user: [],
+    log: [],
     selected: {},
     totalRecords: 0,
     loading: false,
@@ -201,6 +221,20 @@ const orderSlice = createSlice({
         state.totalRecords = action.payload.totalRecords || 0;
       })
       .addCase(fetchOrder.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Fetch orders
+      .addCase(getProductProductionLog.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getProductProductionLog.fulfilled, (state, action) => {
+        state.loading = false;
+        state.log = action.payload.data || [];
+      })
+      .addCase(getProductProductionLog.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

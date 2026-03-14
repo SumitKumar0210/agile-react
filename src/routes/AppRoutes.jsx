@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import AuthLayout from "../layouts/AuthLayout";
 import ProtectedRoute from "./ProtectedRoute";
 import SecurePage from "./SecurePage";
+import JobCardPrint from "../components/JobCard/JobCardPrint";
 
 // lazy load pages to reduce initial bundle & memory usage
 const Login = lazy(() => import("../pages/auth/Login"));
@@ -61,9 +62,17 @@ const StockInOut = lazy(() => import("../pages/Billing/Stocks"));
 const Permissions = lazy(() => import("../pages/Users/Permissions"));
 const PermissionGroupManager = lazy(() => import("../pages/Users/userPermission"));
 const ProductStocks = lazy(() => import("../pages/Production/ProductStock"));
+const DiscardedProduct = lazy(() => import("../pages/Production/DiscardedProduct"));
 const RRPManagement = lazy(() => import("../pages/Production/RRPManagement"));
+const CostSheet = lazy(() => import("../pages/Production/CostSheet"));
+const CCSMaterial = lazy(() => import("../pages/CCS/CCSMaterial"));
+const CCSVendor = lazy(() => import("../pages/CCS/CCSVendor"));
+const CCSComparison = lazy(() => import("../pages/CCS/CCSComparison"));
+const CCSSheet = lazy(() => import("../pages/CCS/CCSSheet"));
+const MaterialInventory = lazy(() => import("../pages/Vendor/Material/Inventory"));
 
 
+const Logs = lazy(() => import("../pages/Logs/Log"));
 const Error404 = lazy(() => import("../pages/error/404"));
 const Error403 = lazy(() => import("../pages/error/403"));
 
@@ -85,6 +94,20 @@ const AppRoutes = () => {
               <PublicQuote />
             </AuthLayout>
           }
+        />
+
+        <Route
+          path="/logs"
+          element={<SecurePage anyPermissions={[
+           "logs.customer_payment",
+          "logs.production",
+          "logs.vendor_payment",
+        ]}><Logs /></SecurePage>}
+        />
+
+        <Route
+          path="/discarded-product"
+          element={<SecurePage permission="discarded_product.read"><DiscardedProduct /></SecurePage>}
         />
 
         {/* Auth (public) */}
@@ -120,6 +143,8 @@ const AppRoutes = () => {
         <Route path="/vendor/purchase-order/approve" element={<SecurePage permission="purchase_order.approve"><ApprovePurchaseOrder /></SecurePage>} />
         <Route path="/vendor/purchase-order/quality-check/:id" element={<SecurePage permission="qc_po.read"><PurchaseOrderQC /></SecurePage>} />
         <Route path="/vendor/purchase-order/print/:id" element={<SecurePage permission="qc_po.read"><PrintPurchaseOrder /></SecurePage>} />
+        <Route path="/material-inventory" element={<SecurePage ><MaterialInventory /></SecurePage>} />
+
 
         <Route path="/vendor/invoice" element={<SecurePage permission="vendor_invoices.read"><VendorInvoice /></SecurePage>} />
         <Route path="/vendor/invoice/view/:id" element={<SecurePage permission="vendor_invoices.read"><InvoiceDetail /></SecurePage>} />
@@ -147,6 +172,7 @@ const AppRoutes = () => {
         <Route path="/production/production-chain" element={<SecurePage permission="productions.read"><Production /></SecurePage>} />
         <Route path="/production/product-request" element={<SecurePage permission="materials.read"><ProductRequest /></SecurePage>} />
         <Route path="/product/stocks" element={<SecurePage ><ProductStocks permission="product_stocks.read" /></SecurePage>} />
+        <Route path="/production/cost-sheet/:id" element={<SecurePage ><CostSheet permission="rrp.read"  /></SecurePage>} />
         <Route path="/production/rrp-calculation" element={<SecurePage ><RRPManagement permission="rrp.read"  /></SecurePage>} />
         <Route path="/product/ready-product" element={<SecurePage ><ReadyProduct /></SecurePage>} />
         {/* <Route path="/product/challan/:id" element={<SecurePage permission="product.challan"><ProductChallan /></SecurePage>} /> */}
@@ -162,10 +188,17 @@ const AppRoutes = () => {
         {/* Stock */}
         <Route path="/stocks" element={<SecurePage permission="stocks.read"><StockInOut /></SecurePage>} />
 
+        {/* CCS */}
+        <Route path="/ccs" element={<SecurePage ><CCSSheet /></SecurePage>} />
+        <Route path="/ccs/material" element={<SecurePage ><CCSMaterial /></SecurePage>} />
+        <Route path="/ccs/:id/vendor" element={<SecurePage ><CCSVendor /></SecurePage>} />
+        <Route path="/ccs/:id/compare" element={<SecurePage ><CCSComparison /></SecurePage>} />
+
         {/* Permission */}
         {/* <Route path="/permissions" element={<SecurePage permission="roles.assign"><Permissions /></SecurePage>} /> */}
         <Route path="/settings/:id/fetch-permissions" element={<SecurePage permission="roles.assign"><PermissionGroupManager /></SecurePage>} />
 
+        <Route path="/job-card" element={<SecurePage><JobCardPrint /></SecurePage>} />
         {/* Error pages */}
         <Route path="/403" element={<Error403 />} />
         <Route path="*" element={<Error404 />} />

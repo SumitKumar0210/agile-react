@@ -1,15 +1,16 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust the path to your api file
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
+
 //  Fetch all users
 export const fetchUsers = createAsyncThunk(
   "users/fetchAll",
   async (params = {}, { rejectWithValue }) => {
     try {
-      const { pageIndex = 1,pageLimit = 10,search = "",} = params;
+      const { pageIndex = 1, pageLimit = 10, search = "" } = params;
 
       const res = await api.get("admin/user/get-data", {
-        params: {page: pageIndex,limit: pageLimit,search,},
+        params: { page: pageIndex, limit: pageLimit, search },
       });
 
       const data = res.data?.data || [];
@@ -31,6 +32,35 @@ export const fetchUsers = createAsyncThunk(
   }
 );
 
+//  Fetch all users
+export const fetchUsersWithSearch = createAsyncThunk(
+  "users/fetchUsersWithSearch",
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const { pageIndex = 1, pageLimit = 10, search = "" } = params;
+
+      const res = await api.get("admin/user/search", {
+        params: { page: pageIndex, limit: pageLimit, search },
+      });
+
+      const data = res.data?.data || [];
+
+      return {
+        data,
+        totalRecords: res.data?.total ?? 0,
+        currentPage: res.data?.current_page ?? pageIndex,
+        perPage: res.data?.per_page ?? pageLimit,
+        lastPage: res.data?.last_page ?? 1,
+      };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Failed to fetch users"
+      );
+    }
+  }
+);
 
 //  Fetch all active supervisor
 export const fetchActiveSupervisor = createAsyncThunk(
@@ -117,6 +147,7 @@ const userSlice = createSlice({
     supervisor: [],
     loading: false,
     error: null,
+    totalRows: 0,
   },
   reducers: {},
   extraReducers: (builder) => {
@@ -128,9 +159,23 @@ const userSlice = createSlice({
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = action.payload;
+        state.data = action.payload.data; // Fixed: Extract the data array
+        state.totalRows = action.payload.totalRecords;
       })
       .addCase(fetchUsers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(fetchUsersWithSearch.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchUsersWithSearch.fulfilled, (state, action) => {
+        state.loading = false;
+        state.data = action.payload.data; // Fixed: Extract the data array
+        state.totalRows = action.payload.totalRecords;
+      })
+      .addCase(fetchUsersWithSearch.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
@@ -151,24 +196,32 @@ const userSlice = createSlice({
 
       // Add
       .addCase(addUser.fulfilled, (state, action) => {
-        state.data.unshift(action.payload);
+        if (Array.isArray(state.data)) {
+          state.data.unshift(action.payload);
+        }
       })
 
       // Update
       .addCase(updateUser.fulfilled, (state, action) => {
-        const index = state.data.findIndex((u) => u.id === action.payload.id);
-        if (index !== -1) state.data[index] = action.payload;
+        if (Array.isArray(state.data)) {
+          const index = state.data.findIndex((u) => u.id === action.payload.id);
+          if (index !== -1) state.data[index] = action.payload;
+        }
       })
 
       // Status Update
       .addCase(statusUpdate.fulfilled, (state, action) => {
-        const user = state.data.find((u) => u.id === action.payload.id);
-        if (user) user.status = action.payload.status;
+        if (Array.isArray(state.data)) {
+          const user = state.data.find((u) => u.id === action.payload.id);
+          if (user) user.status = action.payload.status;
+        }
       })
 
       // Delete
       .addCase(deleteUser.fulfilled, (state, action) => {
-        state.data = state.data.filter((u) => u.id !== action.payload);
+        if (Array.isArray(state.data)) {
+          state.data = state.data.filter((u) => u.id !== action.payload);
+        }
       });
   },
 });

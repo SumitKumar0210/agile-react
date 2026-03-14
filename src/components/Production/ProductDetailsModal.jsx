@@ -17,6 +17,16 @@ import {
   Alert,
   CircularProgress,
 } from "@mui/material";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  TextField,
+} from "@mui/material";
 import { styled } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
 import { TbTruckDelivery } from "react-icons/tb";
@@ -32,11 +42,15 @@ import MessageTimeline from "../TimelineHistory/Timeline";
 import { storeMessage } from "../../pages/Production/slice/messageSlice";
 import { storeAttachment } from "../../pages/Production/slice/attachmentSlice";
 import { compressImage } from "../imageCompressor/imageCompressor";
-import { markReadyForDelivey } from "../../pages/Production/slice/productionChainSlice";
+import { markReadyForDelivey, getBomDetailsWithApprovedQty } from "../../pages/Production/slice/productionChainSlice";
 import { successMessage, errorMessage } from "../../toast";
 import { submitFailedQc } from "../../pages/Production/slice/failedQcSlice";
 import FailQcPage from "./FailedQc";
 import { useAuth } from "../../context/AuthContext";
+import { fetchLabourLogs } from "../../pages/Production/slice/labourLogSlice";
+import { forEach } from "lodash";
+import JobCardDrawer from "../JobCard/JobCard";
+
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -110,7 +124,7 @@ const DetailsSkeleton = () => (
     </Box>
 
     <Grid container spacing={2}>
-      <Grid item xs={12} md={6}>
+      <Grid size={{ xs: 12, md: 6 }}>
         <Box>
           {[...Array(6)].map((_, idx) => (
             <Box key={idx} sx={{ display: "flex", mb: 1.5 }}>
@@ -121,7 +135,7 @@ const DetailsSkeleton = () => (
         </Box>
       </Grid>
 
-      <Grid item xs={12} md={6} style={{ textAlign: "right" }}>
+      <Grid size={{ xs: 12, md: 6 }} style={{ textAlign: "right" }}>
         <Skeleton
           variant="rectangular"
           width="100%"
@@ -132,7 +146,7 @@ const DetailsSkeleton = () => (
     </Grid>
 
     <Grid container spacing={2} sx={{ marginTop: 2 }}>
-      <Grid item xs={12}>
+      <Grid size={{ xs: 12 }}>
         <Box sx={{ mb: 2 }}>
           <Box sx={{ display: "flex", mb: 1 }}>
             <Skeleton variant="text" width={100} height={24} sx={{ mr: 2 }} />
@@ -188,7 +202,7 @@ const DetailsSkeleton = () => (
           />
         </Box>
       </Grid>
-      <Grid item xs={12}>
+      <Grid size={{ xs: 12 }}>
         <Box sx={{ display: "flex", justifyContent: "end" }}>
           <Skeleton
             variant="rectangular"
@@ -198,7 +212,7 @@ const DetailsSkeleton = () => (
           />
         </Box>
       </Grid>
-      <Grid item xs={12}>
+      <Grid size={{ xs: 12 }}>
         <Skeleton variant="text" width={100} height={28} sx={{ mb: 1 }} />
         <Skeleton
           variant="rectangular"
@@ -219,6 +233,7 @@ export default function ProductDetailsModal({
   onOpenTentative,
   loading = false,
 }) {
+  const [openJobCard, setOpenJobCard] = useState(false);
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
   const dispatch = useDispatch();
   const { hasPermission, hasAnyPermission } = useAuth();
@@ -227,8 +242,13 @@ export default function ProductDetailsModal({
   const { supervisor: supervisorData = [] } = useSelector(
     (state) => state.user
   );
+  const { data: existingLogs = [], loading: logsLoading } = useSelector(
+    (state) => state.labourLog
+  );
   const { data: materialData = [] } = useSelector((state) => state.material);
+  const { bomDetails = [] } = useSelector((state) => state.productionChain);
 
+console.log("bomDetails" + bomDetails);
   const [message, setMessage] = useState("");
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
@@ -246,6 +266,9 @@ export default function ProductDetailsModal({
       setMessage("");
       setLocalAttachments(product.attachments || []);
       setLocalMessages(product.messages || []);
+      dispatch(fetchLabourLogs(product.id));
+      const res = dispatch(getBomDetailsWithApprovedQty(product.id));
+ 
     }
   }, [product]);
 
@@ -370,18 +393,83 @@ export default function ProductDetailsModal({
     }
   };
 
+  const calculateTotalHours = (logs) => {
+    let overtimeMinutes = 0;
+
+    logs.forEach(log => {
+      overtimeMinutes += Number(log.overtime || 0);
+    });
+
+    const baseMinutes = logs.length * 8 * 60;
+    const totalMinutes = baseMinutes + overtimeMinutes;
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    return `${hours}h ${minutes}m`;
+  };
+
+
   const currentDepartment = product
     ? departments.find((d) => d.id === product.department_id)
     : null;
+
+    const enrichedProduct = currentDepartment
+    ? { ...product, department: currentDepartment }
+    : product;
+
   const currentSupervisor = product
     ? supervisorData.find((s) => s.id === product.supervisor_id)
     : null;
-
+  const rows = [
+    { material: "Packaging Tape", qty: 100, rQty: 20, aQty: 80 },
+    { material: "Adhesive Glue", qty: 50, rQty: 10, aQty: 40 },
+    { material: "Copper Wire", qty: 30, rQty: 5, aQty: 25 },
+    { material: "Copper Wire", qty: 30, rQty: 5, aQty: 25 },
+    { material: "Packaging Tape", qty: 100, rQty: 20, aQty: 80 },
+    { material: "Adhesive Glue", qty: 50, rQty: 10, aQty: 40 },
+    { material: "Copper Wire", qty: 30, rQty: 5, aQty: 25 },
+    { material: "Copper Wire", qty: 30, rQty: 5, aQty: 25 },
+    { material: "Packaging Tape", qty: 100, rQty: 20, aQty: 80 },
+    { material: "Adhesive Glue", qty: 50, rQty: 10, aQty: 40 },
+    { material: "Copper Wire", qty: 30, rQty: 5, aQty: 25 },
+    { material: "Copper Wire", qty: 30, rQty: 5, aQty: 25 },
+    { material: "Packaging Tape", qty: 100, rQty: 20, aQty: 80 },
+    { material: "Adhesive Glue", qty: 50, rQty: 10, aQty: 40 },
+    { material: "Copper Wire", qty: 30, rQty: 5, aQty: 25 },
+    { material: "Copper Wire", qty: 30, rQty: 5, aQty: 25 },
+    { material: "Packaging Tape", qty: 100, rQty: 20, aQty: 80 },
+    { material: "Adhesive Glue", qty: 50, rQty: 10, aQty: 40 },
+    { material: "Copper Wire", qty: 30, rQty: 5, aQty: 25 },
+    { material: "Copper Wire", qty: 30, rQty: 5, aQty: 25 },
+  ];
   return (
     <>
-      <BootstrapDialog open={open} onClose={onClose} fullWidth maxWidth="md">
+      <BootstrapDialog open={open} onClose={onClose} fullWidth maxWidth="lg">
         <BootstrapDialogTitle onClose={onClose}>
-          {loading ? <Skeleton variant="text" width={150} /> : "Order Details"}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              width: "100%",
+              pr: 4, // space for close icon
+            }}
+          >
+            <Typography variant="h6">
+              {loading ? <Skeleton variant="text" width={150} /> : "Order Details"}
+            </Typography>
+
+            <Button
+              variant="contained"
+              size="small"
+              color="secondary"
+               onClick={() => setOpenJobCard(true)}
+              sx={{ mt: 0, mr: 2, display: loading ? "none" : "block" }}
+            >
+              Job Card
+            </Button>
+          </Box>
         </BootstrapDialogTitle>
         <DialogContent dividers>
           {loading || !product ? (
@@ -413,6 +501,7 @@ export default function ProductDetailsModal({
                   <Button
                     variant="contained"
                     color="error"
+                    sx={{ mt: 0 }}
                     onClick={() => setOpenFailQcDialog(true)}
                   >
                     Fail QC
@@ -439,174 +528,124 @@ export default function ProductDetailsModal({
               </Box>
 
               <Grid container spacing={2} justifyContent="space-between">
-                <Grid item xs={12} md={6}>
-                  <table className="production-status-details">
-                    <tbody>
-                      <tr>
-                        <td className="title">
-                          <strong>Department:</strong>
-                        </td>
-                        <td>{currentDepartment?.name || "-"}</td>
-                      </tr>
+                <Grid size={{ xs: 12, md: 7 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "16px",
+                      alignItems: "stretch",
+                    }}
+                  >
+                    {/* Table - 70% */}
+                    <div
+                    // style={{ width: "80%" }}
+                    >
+                      <table className="production-status-details" style={{ width: "100%" }}>
+                        <tbody>
+                          <tr>
+                            <td className="title"><strong>Department:</strong></td>
+                            <td>{currentDepartment?.name || "-"}</td>
+                          </tr>
 
-                      <tr>
-                        <td className="title">
-                          <strong>Supervisor:</strong>
-                        </td>
-                        <td>{currentSupervisor?.name || "-"}</td>
-                      </tr>
-                      <tr>
-                        <td className="title">
-                          <strong>Priority:</strong>
-                        </td>
-                        <td>
-                          <Chip
-                            label={product.priority || "Not Set"}
-                            size="small"
-                            color={
-                              product.priority === "High"
-                                ? "error"
-                                : product.priority === "Medium"
-                                  ? "warning"
-                                  : "success"
-                            }
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="title">
-                          <strong>quantity:</strong>
-                        </td>
-                        <td>
-                          {product?.qty || "-"}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="title">
-                          <strong>Start Date:</strong>
-                        </td>
-                        <td>{product.start_date || "-"}</td>
-                      </tr>
-                      <tr>
-                        <td className="title">
-                          <strong>Delivery Date:</strong>
-                        </td>
-                        <td>{product.delivery_date || "-"}</td>
-                      </tr>
-                      <tr>
-                        <td className="title">
-                          <strong>Narration:</strong>
-                        </td>
-                        <td>{product.narration || "No narration available"}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </Grid>
+                          <tr>
+                            <td className="title"><strong>Supervisor:</strong></td>
+                            <td>{currentSupervisor?.name || "-"}</td>
+                          </tr>
 
-                <Grid item xs={12} md={6} style={{ textAlign: "right" }}>
-                  {product?.product ? (
-                    <img
-                      src={mediaUrl + product?.product?.image}
-                      alt="product"
+                          <tr>
+                            <td className="title"><strong>Priority:</strong></td>
+                            <td>
+                              <Chip
+                                label={product.priority || "Not Set"}
+                                size="small"
+                                color={
+                                  product.priority === "High"
+                                    ? "error"
+                                    : product.priority === "Medium"
+                                      ? "warning"
+                                      : "success"
+                                }
+                              />
+                            </td>
+                          </tr>
+
+                          <tr>
+                            <td className="title"><strong>Quantity:</strong></td>
+                            <td>{product?.qty || "-"}</td>
+                          </tr>
+
+                          <tr>
+                            <td className="title"><strong>Start Date:</strong></td>
+                            <td>{product.start_date || "-"}</td>
+                          </tr>
+
+                          <tr>
+                            <td className="title"><strong>Delivery Date:</strong></td>
+                            <td>{product.delivery_date || "-"}</td>
+                          </tr>
+
+                          <tr>
+                            <td className="title"><strong>Working Hours:</strong></td>
+                            <td>{calculateTotalHours(existingLogs)}</td>
+                          </tr>
+
+                          <tr>
+                            <td className="title"><strong>Narration:</strong></td>
+                            <td>{product.narration || "No narration available"}</td>
+                          </tr>
+
+                        </tbody>
+                      </table>
+
+                    </div>
+
+                    {/* Image - 30% */}
+                    <div
                       style={{
-                        width: "100%",
-                        maxWidth: 300,
-                        height: "auto",
-                        borderRadius: 3,
-                        cursor: "pointer",
+                        marginLeft: "auto",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
                       }}
-                      onClick={() =>
-                        openFileInNewTab(mediaUrl + product?.product?.image)
-                      }
-                    />
-                  ) : (
-                    <img
-                      src={Drawing}
-                      alt="placeholder"
-                      style={{
-                        width: "100%",
-                        maxWidth: 300,
-                        height: "auto",
-                        borderRadius: 3,
-                      }}
-                    />
-                  )}
-                </Grid>
-              </Grid>
-
-              <Grid container spacing={2} sx={{ marginTop: 2 }}>
-                <Grid size={12} className="production-status">
-                  <table className="production-status-details">
-                    <tbody>
-                      <tr>
-                        <td className="title">
-                          <strong>Tentative:</strong>
-                        </td>
-                        <td style={{ position: "relative", width: "100%" }}>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              columnGap: 2,
-                              rowGap: 1,
-                              border: "1px solid #ddd",
-                              padding: 1,
-                              borderRadius: "4px",
-                              minHeight: "40px",
-                            }}
-                          >
-                            {product.tentative_items?.length > 0 ? (
-                              product.tentative_items.map((item, idx) => {
-                                const material = materialData.find(
-                                  (m) => m.id == item.material_id
-                                );
-                                return (
-                                  <Typography key={idx} fontSize={14}>
-                                    {material?.name || "Unknown"} ({item.qty})
-                                  </Typography>
-                                );
-                              })
-                            ) : (
-                              <Typography color="text.secondary" fontSize={14}>
-                                No tentative items
-                              </Typography>
-                            )}
-                          </Box>
-                          {hasPermission("productions.add_tentative") && (
-                            <IconButton
-                            aria-label="edit"
-                            color="info"
-                            onClick={() => {
-                              onOpenTentative();
-                            }}
-                            style={{ position: "absolute", top: 5, right: 5 }}
-                          >
-                            <FiEdit size={16} />
-                          </IconButton>
-                          )}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="title">
-                          <strong>Material Requests:</strong>
-                        </td>
-                        <td>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              columnGap: 2,
-                              rowGap: 1,
-                            }}
-                          >
-                            {product.material_request?.length > 0 ? (
-                              product.material_request.map((req) => {
-                                const material = materialData.find(
-                                  (m) => m.id === req.material_id
-                                );
-                                return (
+                    >
+                      <img
+                        src={product?.product ? mediaUrl + product?.product?.image : Drawing}
+                        alt="product"
+                        style={{
+                          width: "170px",
+                          height: "170px",
+                          maxHeight: "100%",
+                          objectFit: "contain",
+                          borderRadius: 4,
+                          cursor: product?.product ? "pointer" : "default",
+                        }}
+                        onClick={() =>
+                          product?.product &&
+                          openFileInNewTab(mediaUrl + product?.product?.image)
+                        }
+                      />
+                    </div>
+                  </div>
+                  <Grid size={{ xs: 12 }}>
+                    <table className="production-status-details" style={{ width: "100%", marginTop: "6px" }}>
+                      <tbody>
+                        <tr>
+                          <td className="title">
+                            <strong>Files:</strong>
+                          </td>
+                          <td>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                columnGap: 2,
+                                rowGap: 1,
+                              }}
+                            >
+                              {localAttachments.length > 0 &&
+                                localAttachments.map((att) => (
                                   <Typography
-                                    key={req.id}
+                                    key={att.id}
                                     sx={{
                                       border: "1px solid #ccc",
                                       padding: "2px 8px",
@@ -615,154 +654,155 @@ export default function ProductDetailsModal({
                                       display: "flex",
                                       alignItems: "center",
                                       height: "36px",
-                                      backgroundColor: req.status
-                                        ? "success.light"
-                                        : "grey.200",
+                                      cursor: "pointer",
+                                      "&:hover": {
+                                        backgroundColor: "grey.100",
+                                      },
                                     }}
+                                    onClick={() =>
+                                      openFileInNewTab(mediaUrl + att.doc)
+                                    }
                                   >
-                                    {material?.name || "Unknown"} (Qty: {req.qty})
+                                    <AiOutlineFilePdf
+                                      size={16}
+                                      style={{ marginRight: 5 }}
+                                    />
+                                    {att.file_name || "Attachment"}
                                   </Typography>
-                                );
-                              })
-                            ) : (
-                              <Typography color="text.secondary" fontSize={14}>
-                                No material requests
-                              </Typography>
-                            )}
-                          </Box>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="title">
-                          <strong>Files:</strong>
-                        </td>
-                        <td>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              columnGap: 2,
-                              rowGap: 1,
-                            }}
-                          >
-                            {localAttachments.length > 0 &&
-                              localAttachments.map((att) => (
-                                <Typography
-                                  key={att.id}
+                                ))}
+                              {hasPermission("productions.upload_file") && (
+                                <Button
+                                  component="label"
+                                  variant="outlined"
+                                  tabIndex={-1}
+                                  startIcon={<ImAttachment />}
+                                  disabled={uploadingFiles}
                                   sx={{
-                                    border: "1px solid #ccc",
-                                    padding: "2px 8px",
-                                    fontSize: "14px",
-                                    borderRadius: "4px",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    height: "36px",
-                                    cursor: "pointer",
+                                    mt: 0,
+                                    fontWeight: 500,
+                                    color: "grey.600",
+                                    borderColor: "grey.400",
                                     "&:hover": {
-                                      backgroundColor: "grey.100",
+                                      borderColor: "grey.500",
+                                      backgroundColor: "grey.50",
                                     },
                                   }}
-                                  onClick={() =>
-                                    openFileInNewTab(mediaUrl + att.doc)
-                                  }
                                 >
-                                  <AiOutlineFilePdf
-                                    size={16}
-                                    style={{ marginRight: 5 }}
+                                  {uploadingFiles ? "Uploading..." : "Upload files"}
+                                  <VisuallyHiddenInput
+                                    type="file"
+                                    onChange={handleFileUpload}
+                                    multiple
+                                    accept="image/*,.pdf"
                                   />
-                                  {att.file_name || "Attachment"}
-                                </Typography>
-                              ))}
-                            {hasPermission("productions.upload_file") && (
-                              <Button
-                              component="label"
-                              variant="outlined"
-                              tabIndex={-1}
-                              startIcon={<ImAttachment />}
-                              disabled={uploadingFiles}
-                              sx={{
-                                mt: 0,
-                                fontWeight: 500,
-                                color: "grey.600",
-                                borderColor: "grey.400",
-                                "&:hover": {
-                                  borderColor: "grey.500",
-                                  backgroundColor: "grey.50",
-                                },
-                              }}
-                            >
-                              {uploadingFiles ? "Uploading..." : "Upload files"}
-                              <VisuallyHiddenInput
-                                type="file"
-                                onChange={handleFileUpload}
-                                multiple
-                                accept="image/*,.pdf"
-                              />
-                            </Button>
-                            )}
-                          </Box>
-                        </td>
-                      </tr>
-                      {hasPermission("productions.send_message") && (
-                        <tr>
-                        <td className="title">
-                          <strong>Message:</strong>
-                        </td>
-                        <td>
-                          <TextareaAutosize
-                            maxRows={4}
-                            minRows={3}
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                            placeholder="Type your message here..."
-                            style={{
-                              width: "100%",
-                              border: "1px solid #ddd",
-                              borderRadius: "4px",
-                              padding: "10px",
-                              outline: "none",
-                              fontFamily: "inherit",
-                            }}
-                          />
-                          <Grid item xs={12}>
-                            <Box
-                              sx={{
-                                display: "flex",
-                                justifyContent: "end",
-                                marginTop: 0,
-                              }}
-                            >
-                              <Button
-                                variant="contained"
-                                color="primary"
-                                onClick={handleSendMessage}
-                                disabled={!message.trim()}
-                                sx={{ marginTop: 0 }}
-                              >
-                                Send
-                              </Button>
+                                </Button>
+                              )}
                             </Box>
-                          </Grid>
-                        </td>
-                      </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Typography variant="h6" sx={{ mb: 1, paddingLeft: 1.5 }}>
-                    Messages:
-                  </Typography>
-                  {localMessages.length > 0 ? (
-                    <MessageTimeline messages={localMessages} />
-                  ) : (
-                    <Typography color="text.secondary" sx={{ paddingLeft: 2 }}>
-                      No messages yet
+                          </td>
+                        </tr>
+                        {hasPermission("productions.send_message") && (
+                          <tr>
+                            <td className="title">
+                              <strong>Message:</strong>
+                            </td>
+                            <td style={{ position: "relative", width: "100%" }}>
+                              <TextareaAutosize
+                                maxRows={3}
+                                minRows={2}
+                                value={message}
+                                onChange={(e) => setMessage(e.target.value)}
+                                placeholder="Type your message here..."
+                                style={{
+                                  width: "100%",
+                                  border: "1px solid #ddd",
+                                  borderRadius: "4px",
+                                  padding: "10px",
+                                  outline: "none",
+                                  fontFamily: "inherit",
+                                }}
+                              />
+                              <Grid size={{ xs: 12 }}>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    justifyContent: "end",
+                                    marginTop: 0,
+                                  }}
+                                >
+                                  <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={handleSendMessage}
+                                    disabled={!message.trim()}
+                                    sx={{ marginTop: 2 }}
+                                  >
+                                    Send
+                                  </Button>
+                                </Box>
+                              </Grid>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                    <Typography sx={{ mb: 1, fontSize: 18 }}>
+                      Messages:
                     </Typography>
-                  )}
+                    {localMessages.length > 0 ? (
+                      <MessageTimeline messages={localMessages} />
+                    ) : (
+                      <Typography color="text.secondary" sx={{ fontStyle: "italic", fontSize: 14 }}>
+                        No messages yet
+                      </Typography>
+                    )}
+                  </Grid>
+                </Grid>
+                <Grid size={{ xs: 12, md: 5 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                    <Typography sx={{ fontSize: 16 }}>
+                      Bill Of Materials (BOM)
+                    </Typography>
+
+                    {hasPermission("productions.add_tentative") && (
+                      <IconButton
+                        aria-label="edit"
+                        color="info"
+                        onClick={() => {
+                          onOpenTentative();
+                        }}
+                        size="small"
+                      >
+                        <FiEdit size={16} />
+                      </IconButton>
+                    )}
+                  </Box>
+                  <TableContainer component={Paper} elevation={0} sx={{ border: "1px solid #e0e0e0" }}>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell><strong>Raw Material</strong></TableCell>
+                          <TableCell align="center"><strong>Qty</strong></TableCell>
+                          <TableCell align="center"><strong>Req. Qty</strong></TableCell>
+                          <TableCell align="center"><strong>Alc. Qty</strong></TableCell>
+                        </TableRow>
+                      </TableHead>
+
+                      <TableBody>
+                        {bomDetails.map((row, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{row.name}</TableCell>
+                            <TableCell align="center">{row.qty}</TableCell>
+                            <TableCell align="center">{row.requestedQty}</TableCell>
+                            <TableCell align="center">{row.approvedQty}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 </Grid>
               </Grid>
+
+
             </>
           )}
         </DialogContent>
@@ -854,6 +894,11 @@ export default function ProductDetailsModal({
           </Button>
         </DialogActions>
       </Dialog>
+      <JobCardDrawer
+        open={openJobCard}
+        onClose={() => setOpenJobCard(false)}
+        product={enrichedProduct}
+      />
     </>
 
   );

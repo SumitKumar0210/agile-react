@@ -45,11 +45,12 @@ const { appDetails } = useAuth();
       `,
   });
 
-  const items = typeof po.material_items === "string"
-  ? JSON.parse(po.material_items)
-  : Array.isArray(po.material_items)
-    ? po.material_items
-    : [];
+  const items =  po.material_items;
+  // const items = typeof po.material_items === "string"
+  // ? JSON.parse(po.material_items)
+  // : Array.isArray(po.material_items)
+  //   ? po.material_items
+  //   : [];
 
   // Loading state
   if (loading) {
@@ -211,12 +212,12 @@ const { appDetails } = useAuth();
                       <Tbody>
                         {items.map((item, index) => (
                           <Tr key={item.material_id || index}>
-                            <Td>{item.name || 'N/A'}</Td>
-                            <Td>{item.qty || 0}</Td>
-                            <Td>{item.size || 'N/A'}</Td>
-                            <Td>{item.uom || 'N/A'}</Td>
-                            <Td>{item.rate || 0}</Td>
-                            <Td>{item.total || 0}</Td>
+                            <Td>{item.name || item.material_name || 'N/A'}</Td>
+                            <Td>{item.qty || item.qty || 0}</Td>
+                            <Td>{item.size || item.size || 'N/A'}</Td>
+                            <Td>{item.uom || item.uom || 'N/A'}</Td>
+                            <Td>{item.rate || item.neg_rate || 0}</Td>
+                            <Td>{item.total || item.amount || 0}</Td>
                           </Tr>
                         ))}
                       </Tbody>

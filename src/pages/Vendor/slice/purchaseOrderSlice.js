@@ -6,7 +6,7 @@ import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 // Fetch purchase orders with pagination and search
 export const fetchPurchaseOrders = createAsyncThunk(
   "purchaseOrder/fetchPurchaseOrders",
-  async ({ page, perPage, search }, { rejectWithValue }) => {
+  async ({ page, perPage, search,showApproved }, { rejectWithValue }) => {
     try {
       const queryParams = new URLSearchParams({
         page: String(page),
@@ -15,6 +15,10 @@ export const fetchPurchaseOrders = createAsyncThunk(
 
       if (search && search.trim()) {
         queryParams.append('search', search.trim());
+      }
+
+      if (showApproved !== undefined) {
+        queryParams.append('showApproved', String(showApproved));
       }
 
       const res = await api.get(
@@ -147,9 +151,9 @@ export const approvePO = createAsyncThunk(
 //  Delete customer
 export const deletePO = createAsyncThunk(
   "purchaseOrder/delete",
-  async (id, { rejectWithValue }) => {
+  async ({id,reason}, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/purchase-order/delete/${id}`);
+      const res = await api.post(`admin/purchase-order/delete/${id}`, { reason });
       successMessage(res.data.message);
       return id;
     } catch (error) {

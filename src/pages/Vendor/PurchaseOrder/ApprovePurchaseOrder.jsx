@@ -158,9 +158,11 @@ const ApprovePurchaseOrder = () => {
       vendorName: po.vendor?.name || "N/A",
       dated: po.order_date || "-",
       orderTotal: po.grand_total || 0,
-      itemsOrdered: po.material_items
-        ? JSON.parse(po.material_items).length
-        : 0,
+      itemsOrdered: po.material_items.length ?? 0,
+       
+      // itemsOrdered: po.material_items
+      //   ? JSON.parse(po.material_items).length
+      //   : 0,
       qcPassed: po.inward ? JSON.parse(po.inward.material_items).length : 0,
       qcData: po.inward,
       status: po.quality_status ? "Approved" : "Pending",

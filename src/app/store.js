@@ -42,6 +42,13 @@ import stockReducer from '../pages/Billing/slice/stockSlice';
 import userPermissionsReducer from '../pages/Users/slices/userPermissionsSlice';
 import roleReducer from '../pages/settings/slices/roleSlice';
 import workShiftReducer from '../pages/settings/slices/workShiftSlice';
+import costSheetReducer from '../pages/Production/slice/costSheetSlice';
+import ccsMaterialReducer from '../pages/CCS/slice/ccsMaterialSlice';
+import ccsVendorReducer from '../pages/CCS/slice/ccsVendorSlice';
+import ccsComparisonReducer from '../pages/CCS/slice/ccsComparisonSlice';
+import ccsSheetReducer from '../pages/CCS/slice/ccsSheetSlice';
+import logReducer from '../pages/Logs/slice/logSlice';
+import inventoryReducer from '../pages/Vendor/Material/slice/inventorySlice';
 
 export const store = configureStore({
     reducer: {
@@ -88,5 +95,12 @@ export const store = configureStore({
         userPermissions: userPermissionsReducer,
         role: roleReducer,
         workShift: workShiftReducer,
+        costSheet: costSheetReducer,
+        ccsMaterial: ccsMaterialReducer,
+        ccsVendor: ccsVendorReducer,
+        ccsComparison: ccsComparisonReducer,
+        ccsSheet: ccsSheetReducer,
+        log: logReducer,
+        inventory: inventoryReducer,
     }
 })

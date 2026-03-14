@@ -78,9 +78,18 @@ BootstrapDialogTitle.propTypes = {
 
 //  Status colors
 const getStatusChip = (status, count = 0) => {
+  console.log(status);
   switch (status) {
     case 0:
       return <Chip label="Pending" color="warning" size="small" />;
+    case 3:
+      return (
+        <Chip
+          label={`Complete`}
+          color="success"
+          size="small"
+        />
+      );;
 
     default:
       return (

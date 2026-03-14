@@ -124,7 +124,7 @@ const ForgotPassword = () => {
           onLoad={handleLogoLoad}
           onError={handleLogoError}
         />
-        <Typography variant="h5" component="h2" sx={{ mb: 1 }}>
+        <Typography variant="h5" component="h2" sx={{ fontSize: '1.25rem', my: 2 }}>
           Forgot Password
         </Typography>
         <Typography variant="body2" sx={{ mb: 2 }}>
@@ -137,7 +137,8 @@ const ForgotPassword = () => {
           label="Email"
           placeholder="Enter your email"
           type="email"
-          variant="standard"
+          variant="outlined"
+          size="small"
           fullWidth
           required
           value={email}

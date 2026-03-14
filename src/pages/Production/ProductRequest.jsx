@@ -41,6 +41,7 @@ const ProductRequest = () => {
   const [openViewModal, setOpenViewModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const [isApproving, setIsApproving] = useState(false);
+  const [isApproved, setIsApproved] = useState(false);
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
@@ -107,9 +108,17 @@ const ProductRequest = () => {
   }, []);
 
   const handleView = useCallback((row) => {
+    const isApproved = row.material_request.some(item => item.status === 1);
+    setIsApproved(isApproved);
+    
     setSelectedRow(row);
     setOpenViewModal(true);
   }, []);
+
+  const colseModel = () =>{
+    setOpenViewModal(false);
+    setIsApproved(false)
+  }
 
   const handleApprove = useCallback((row) => {
     setSelectedRow(row);
@@ -376,7 +385,7 @@ const ProductRequest = () => {
       {/* View Materials Modal */}
       <Dialog
         open={openViewModal}
-        onClose={() => setOpenViewModal(false)}
+        onClose={() => colseModel()}
         maxWidth="md"
         fullWidth
       >
@@ -426,7 +435,10 @@ const ProductRequest = () => {
                   <TableCell>Material Name</TableCell>
                   <TableCell>Size</TableCell>
                   <TableCell align="right">Requested Qty</TableCell>
+                  {!isApproved && (
+
                   <TableCell align="right">Available Qty</TableCell>
+                  )}
                   <TableCell>Request Date</TableCell>
                 </TableRow>
               </TableHead>
@@ -457,7 +469,11 @@ const ProductRequest = () => {
                         {request.qty}
                       </Typography>
                     </TableCell>
+                   
+                    {!isApproved &&(
+
                     <TableCell align="right">
+               
                       <Chip
                         label={request.material?.available_qty || 0}
                         size="small"
@@ -468,6 +484,7 @@ const ProductRequest = () => {
                         }
                       />
                     </TableCell>
+                    )}
                     <TableCell>
                       <Typography variant="caption">
                         {handleDateFormat(request.created_at)}
@@ -489,13 +506,13 @@ const ProductRequest = () => {
           </TableContainer>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenViewModal(false)} variant="outlined">
+          <Button onClick={() => colseModel()} variant="outlined">
             Close
           </Button>
           {(hasPermission("material_request.approve")  && selectedRow?.material_request?.[0]?.status === 0) && (
             <Button
               onClick={() => {
-                setOpenViewModal(false);
+                colseModel();
                 handleApprove(selectedRow);
               }}
               variant="contained"

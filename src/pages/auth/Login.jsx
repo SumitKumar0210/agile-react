@@ -172,8 +172,8 @@ const Login = () => {
         {showSkeleton && (
           <Skeleton
             variant="rectangular"
-            width={80}
-            height={80}
+            width={100}
+            height={100}
             sx={{ marginBottom: "10px", borderRadius: 1, margin: "0 auto" }}
           />
         )}
@@ -181,14 +181,14 @@ const Login = () => {
           src={displayLogo}
           alt="logo"
           style={{
-            width: "80px",
+            width: "100px",
             display: showSkeleton ? "none" : "block",
             margin: "0 auto",
           }}
           onLoad={handleLogoLoad}
           onError={handleLogoError}
         />
-        <Typography variant="h5" component="h2" sx={{ mb: 1, mt: showSkeleton ? 0 : 1 }}>
+        <Typography variant="h4" component="h2" sx={{ fontSize: '1.25rem', my: 2, mt: showSkeleton ? 0 : 1 }}>
           Sign In
         </Typography>
       </Grid>
@@ -197,8 +197,9 @@ const Login = () => {
         <TextField
           label="Email"
           name="email"
-          variant="standard"
+          variant="outlined"
           fullWidth
+          size="small"
           required
           value={formik.values.email}
           onChange={formik.handleChange}
@@ -212,8 +213,9 @@ const Login = () => {
           label="Password"
           name="password"
           type="password"
-          variant="standard"
+          variant="outlined"
           fullWidth
+          size="small"
           required
           value={formik.values.password}
           onChange={formik.handleChange}
@@ -229,6 +231,9 @@ const Login = () => {
           color="primary"
           variant="contained"
           fullWidth
+          sx={{
+            mt: 0,
+          }}
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : null}
         >

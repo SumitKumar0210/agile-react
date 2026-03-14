@@ -28,7 +28,7 @@ import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 
 import { useDispatch, useSelector } from "react-redux";
-import { fetchProducts, deleteProduct, statusUpdate } from "../slices/productSlice";
+import { fetchProductsWithSearch, deleteProduct, statusUpdate } from "../slices/productSlice";
 import { fetchActiveGroup } from "../slices/groupSlice";
 import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
 import Profile from "../../../assets/images/profile.jpg";
@@ -40,7 +40,7 @@ const Product = () => {
   const { hasPermission, hasAnyPermission } = useAuth();
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
   const dispatch = useDispatch();
-  const { data: data = [], loading } = useSelector((state) => state.product);
+  const { searchData: data = [], loading } = useSelector((state) => state.product);
 
   const tableContainerRef = useRef(null);
   const [openProductDialog, setOpenProductDialog] = useState(false);
@@ -50,7 +50,7 @@ const Product = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchProducts());
+    dispatch(fetchProductsWithSearch());
   }, [dispatch]);
 
   // Load groups when dialog opens
