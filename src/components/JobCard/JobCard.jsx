@@ -87,6 +87,7 @@ const JobCardDrawer = ({ open, onClose, product }) => {
         console.log("QC Checklist:", qcRows);
     };
     const handlePrintJobCard = () => {
+        
         navigate("/job-card/", {
             state: {
                 product: product,
@@ -432,9 +433,9 @@ const JobCardDrawer = ({ open, onClose, product }) => {
                     Print Job Card
                 </Button>
 
-                <Button variant="contained" color="primary" sx={{ mt: 0 }} onClick={handleSubmit}>
+                {/* <Button variant="contained" color="primary" sx={{ mt: 0 }} onClick={handleSubmit}>
                     Save Finishes
-                </Button>
+                </Button> */}
             </Box>
         </Drawer>
     );

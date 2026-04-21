@@ -48,100 +48,101 @@ import ProductType from "./ProductType/ProductType";
 import RolesPage from "./Roles/Roles";
 import { useAuth } from "../../context/AuthContext";
 import WorkShift from "./Workshift/Workshift";
+import { useLocation } from "react-router-dom";
 
 // Define tab configuration with required permissions
 const tabConfig = [
-  { 
-    value: "tab2", 
-    label: "Groups", 
-    icon: <GrGroup />, 
-    component: <Group/>,
+  {
+    value: "tab2",
+    label: "Groups",
+    icon: <GrGroup />,
+    component: <Group />,
     permission: "groups.read" // Define the required permission
   },
-  { 
-    value: "tab3", 
-    label: "Categories", 
-    icon: <DescriptionIcon />, 
-    component: <Category/>,
+  {
+    value: "tab3",
+    label: "Categories",
+    icon: <DescriptionIcon />,
+    component: <Category />,
     permission: "categories.read"
   },
-  { 
-    value: "tab9", 
-    label: "Machines", 
-    icon: <CheckCircleOutlineIcon />, 
-    component: <Machine/>,
+  {
+    value: "tab9",
+    label: "Machines",
+    icon: <CheckCircleOutlineIcon />,
+    component: <Machine />,
     permission: "machines.read"
   },
-  { 
-    value: "tab8", 
-    label: "UOM", 
-    icon: <TbRosetteNumber1 />, 
-    component: <UOM/>,
+  {
+    value: "tab8",
+    label: "UOM",
+    icon: <TbRosetteNumber1 />,
+    component: <UOM />,
     permission: "uom.read"
   },
-  { 
-    value: "tab5", 
-    label: "Material", 
-    icon: <FolderOpenIcon />, 
-    component: <Material/>,
+  {
+    value: "tab5",
+    label: "Material",
+    icon: <FolderOpenIcon />,
+    component: <Material />,
     permission: "materials.read"
   },
-  { 
-    value: "tab26", 
-    label: "Product Type", 
-    icon: <LayersIcon />, 
-    component: <ProductType/>,
+  {
+    value: "tab26",
+    label: "Product Type",
+    icon: <LayersIcon />,
+    component: <ProductType />,
     permission: "product_types.read"
   },
-  { 
-    value: "tab7", 
-    label: "Products", 
-    icon: <LayersIcon />, 
-    component: <Product/>,
+  {
+    value: "tab7",
+    label: "Products",
+    icon: <LayersIcon />,
+    component: <Product />,
     permission: "product.read"
   },
-  { 
-    value: "tab33", 
-    label: "Tax Slabs", 
-    icon: <ListAltIcon />, 
-    component: <TaxSlab/>,
+  {
+    value: "tab33",
+    label: "Tax Slabs",
+    icon: <ListAltIcon />,
+    component: <TaxSlab />,
     permission: "tax_slabs.read"
   },
-  { 
-    value: "tab1", 
-    label: "User Roles", 
-    icon: <LuUserRoundCog />, 
-    component: <RolesPage/>,
+  {
+    value: "tab1",
+    label: "User Roles",
+    icon: <LuUserRoundCog />,
+    component: <RolesPage />,
     permission: "roles.read",
     // Alternative: use role check instead
     // role: "admin" 
   },
-  { 
-    value: "tab4", 
-    label: "Vendors", 
-    icon: <MdOutlineStorefront />, 
-    component: <Vendor/>,
+  {
+    value: "tab4",
+    label: "Vendors",
+    icon: <MdOutlineStorefront />,
+    component: <Vendor />,
     permission: "vendors.read"
   },
-  { 
-    value: "tab47", 
-    label: "Working Shift", 
-    icon: <MdOutlineStorefront />, 
-    component: <WorkShift/>,
+  {
+    value: "tab47",
+    label: "Working Shift",
+    icon: <MdOutlineStorefront />,
+    component: <WorkShift />,
     permission: "working_shifts.read"
   },
-  { 
-    value: "tab15", 
-    label: "Departments", 
-    icon: <FaLayerGroup />, 
-    component: <Department/>,
+  {
+    value: "tab15",
+    label: "Departments",
+    icon: <FaLayerGroup />,
+    component: <Department />,
     permission: "departments.read"
   },
-  { 
-    value: "tab35", 
-    label: "General Settings", 
-    icon: <IoSettingsOutline />, 
-    component: <GeneralSetting/>,
+  {
+    value: "tab35",
+    label: "General Settings",
+    icon: <IoSettingsOutline />,
+    component: <GeneralSetting />,
     permission: "general_settings.read",
     // Or require admin role
     // role: "admin"
@@ -160,23 +161,35 @@ function SettingsPage() {
       if (tab.permission && !hasPermission(tab.permission)) {
         return false;
       }
-      
+
       // Check if user has required role
       if (tab.role && !hasRole(tab.role)) {
         return false;
       }
-      
+
       // Check if user has any of the required permissions
       if (tab.anyPermissions && !hasAnyPermission(tab.anyPermissions)) {
         return false;
       }
-      
+
       return true;
     });
   }, [hasPermission, hasRole, hasAnyPermission]);
 
   // Set initial active tab to first allowed tab
+  // const [activeTab, setActiveTab] = useState(() => {
+  //   return allowedTabs.length > 0 ? allowedTabs[0].value : null;
+  // });
+
+  const location = useLocation();
+
+  // Replace the existing useState for activeTab:
   const [activeTab, setActiveTab] = useState(() => {
+    // If navigated back from sub-departments, restore the requested tab
+    const requestedTab = location.state?.activeTab;
+    if (requestedTab && allowedTabs.some((t) => t.value === requestedTab)) {
+      return requestedTab;
+    }
     return allowedTabs.length > 0 ? allowedTabs[0].value : null;
   });
 
@@ -226,7 +239,7 @@ function SettingsPage() {
       <Box sx={{ mb: 2 }}>
         <Typography variant="h6">Settings</Typography>
       </Box>
-      
+
       <Box
         sx={{
           display: "flex",
@@ -261,7 +274,7 @@ function SettingsPage() {
                 value={activeTab}
                 onChange={handleChange}
                 variant="scrollable"
-                allowScrollButtonsMobile   
+                allowScrollButtonsMobile
                 TabIndicatorProps={{ style: { display: "none" } }}
                 sx={{
                   alignItems: isMobile ? "center" : "flex-start",
@@ -276,7 +289,7 @@ function SettingsPage() {
                     borderRadius: 1,
                     textTransform: 'none',
                     minHeight: 40,
-                    width: "100%", 
+                    width: "100%",
                     maxWidth: "100%",
                     px: 1,
                     mb: 1,
@@ -292,7 +305,7 @@ function SettingsPage() {
                     backgroundColor: 'theme.active',
                     color: 'primary.main',
                     fontWeight: 500,
-                    borderRight: 'none !important', 
+                    borderRight: 'none !important',
                   },
                   '& .MuiTab-root .MuiSvgIcon-root': {
                     fontSize: '1.2rem',
@@ -320,6 +333,7 @@ function SettingsPage() {
             flex: 1,
             height: isMobile ? "auto !important" : "100%",
             boxSizing: "border-box",
+            overflowX: "auto"
           }}
         >
           <Card

@@ -899,6 +899,7 @@ console.log("bomDetails" + bomDetails);
         onClose={() => setOpenJobCard(false)}
         product={enrichedProduct}
       />
+      
     </>
 
   );

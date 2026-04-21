@@ -70,6 +70,7 @@ const CCSVendor = lazy(() => import("../pages/CCS/CCSVendor"));
 const CCSComparison = lazy(() => import("../pages/CCS/CCSComparison"));
 const CCSSheet = lazy(() => import("../pages/CCS/CCSSheet"));
 const MaterialInventory = lazy(() => import("../pages/Vendor/Material/Inventory"));
+const SubDepartment = lazy(() => import("../pages/settings/Department/SubDepartment/SubDepartment"));
 
 
 const Logs = lazy(() => import("../pages/Logs/Log"));
@@ -130,6 +131,7 @@ const AppRoutes = () => {
           "vendors.read",
           "departments.read",
         ]}><Settings /></SecurePage>} />
+        <Route path="/setting/:id/sub-department" element={<SecurePage ><SubDepartment /></SecurePage>} />
         <Route path="/users" element={<SecurePage permission="users.read"><Users /></SecurePage>} />
         <Route path="/customers" element={<SecurePage permission="customers.read"><Customers /></SecurePage>} />
         <Route path="/labours" element={<SecurePage permission="labours.read"><Labours /></SecurePage>} />

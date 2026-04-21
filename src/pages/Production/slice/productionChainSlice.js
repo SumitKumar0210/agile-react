@@ -56,6 +56,21 @@ export const changeProductDepartment = createAsyncThunk(
   }
 );
 
+export const changeProductSubDepartment = createAsyncThunk(
+  "productionChain/changeProductSubDepartment",
+  async (values, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/production-order/set-change-sub-department`, values);
+      successMessage(res.data.message);
+      return  res.data.data || [];
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
 // set new priority
 export const setNewPriority = createAsyncThunk(
   "productionChain/setNewPriority",

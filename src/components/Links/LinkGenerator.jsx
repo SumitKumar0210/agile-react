@@ -45,7 +45,7 @@ const LinkGenerator = ({ id, customerId }) => {
     setCurrentLink(null);
 
     try {
-      const result = await dispatch(getLink({ id })).unwrap();
+      const result = await dispatch(getLink({ id,entity: "quotation" })).unwrap();
       setCurrentLink(result.link);
       
       // Optionally show message that link already exists
@@ -66,7 +66,7 @@ const LinkGenerator = ({ id, customerId }) => {
     setIsGenerating(true);
     try {
       const result = await dispatch(
-        generateLink({ id, expiry_days: expiryDays })
+        generateLink({ id, expiry_days: expiryDays, entity: "quotation" })
       ).unwrap();
       setCurrentLink(result.link);
       

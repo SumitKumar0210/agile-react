@@ -265,8 +265,16 @@ const PublicQuoteDetailsView = () => {
   };
 
   useEffect(() => {
-    fetchQuotationDetails();
-  }, [link]);
+  if (!quotationDetails) return;
+  const el = document.getElementById("contentBox");
+  if (el?.parentElement) {
+    el.parentElement.style.width = "100%";
+  }
+}, [quotationDetails]);
+
+useEffect(() => {
+  fetchQuotationDetails();
+}, [link]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -416,6 +424,7 @@ const PublicQuoteDetailsView = () => {
           justifyContent: "center",
           alignItems: "center",
           minHeight: "100vh",
+          minHeight: "100wh",
           backgroundColor: "#f5f5f5",
           gap: 2,
           p: 2,
@@ -448,7 +457,8 @@ const PublicQuoteDetailsView = () => {
   }
 
   return (
-    <Box sx={{ backgroundColor: "#f5f5f5", minHeight: "100vh", py: { xs: 2, md: 3 } }}>
+    <Box id="contentBox"
+      sx={{ backgroundColor: "#f5f5f5", minHeight: "100vh", maxWidth: "100vw", py: { xs: 2, md: 3 } }}>
       <Box sx={{ maxWidth: { xs: "100%", md: "210mm" }, margin: "0 auto", px: { xs: 1, sm: 2 } }}>
         {/* Action Buttons - No Print */}
         <Box

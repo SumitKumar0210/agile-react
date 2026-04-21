@@ -12,9 +12,11 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import {
   changeProductDepartment,
+  changeProductSubDepartment,
   setNewSupervisor,
   setNewPriority,
 } from "../../pages/Production/slice/productionChainSlice";
+import { fetchActiveSubDepartments } from "../../pages/settings/slices/subDepartmentSlice";
 import { useAuth } from "../../context/AuthContext";
 
 function useSubmenu() {
@@ -61,6 +63,50 @@ const SwitchSubmenu = React.memo(function SwitchSubmenu({
           {opt.name}
         </MenuItem>
       ))}
+    </Menu>
+  );
+});
+
+/* ----------------------- SWITCH SUB-DEPARTMENT SUBMENU ------------------------ */
+const SwitchSubDeptSubmenu = React.memo(function SwitchSubDeptSubmenu({
+  submenu,
+  onSelect,
+  subDepartments,
+  currentSubDepartment,
+}) {
+  const options = useMemo(() => subDepartments || [], [subDepartments]);
+
+  return (
+    <Menu
+      anchorEl={submenu.anchorEl}
+      open={submenu.open}
+      onClose={submenu.close}
+      anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      transformOrigin={{ vertical: "top", horizontal: "left" }}
+      disableAutoFocusItem
+      MenuListProps={{ onClick: (e) => e.stopPropagation() }}
+      sx={{ zIndex: 1400, marginLeft: "2px" }}
+    >
+      {options.length === 0 ? (
+        <MenuItem disabled>No sub-departments</MenuItem>
+      ) : (
+        options.map((opt) => (
+          <MenuItem
+            key={opt.id}
+            disableRipple
+            onClick={() => {
+              onSelect(opt);
+              submenu.close();
+            }}
+          >
+            <Radio
+              checked={currentSubDepartment === opt.id}
+              sx={{ p: 0, pr: 1 }}
+            />
+            {opt.name}
+          </MenuItem>
+        ))
+      )}
     </Menu>
   );
 });
@@ -159,8 +205,12 @@ export default function ActionMenu({
   const dispatch = useDispatch();
   const { data: departments = [] } = useSelector((state) => state.department);
   const { supervisor: supervisorData = [] } = useSelector((state) => state.user);
+  // Read active sub-departments for the current department from Redux
+  const { data: activeSubDepartments = [] } = useSelector((state) => state.subDepartment);
+  console.log('test sub',activeSubDepartments);
 
   const switchSub = useSubmenu();
+  const switchSubDept = useSubmenu();   // ← new submenu hook for sub-dept
   const supSub = useSubmenu();
   const prioSub = useSubmenu();
 
@@ -175,11 +225,20 @@ export default function ActionMenu({
     }
   }, [product]);
 
+  /* ------------ Fetch active sub-departments whenever menu opens
+     or the product's department changes ---------------------------- */
+  React.useEffect(() => {
+    if (open && product?.department_id) {
+      dispatch(fetchActiveSubDepartments(product.department_id));
+    }
+  }, [open, product?.department_id, dispatch]);
+
   const closeAllSubmenus = useCallback(() => {
     switchSub.close();
+    switchSubDept.close();
     supSub.close();
     prioSub.close();
-  }, [switchSub, supSub, prioSub]);
+  }, [switchSub, switchSubDept, supSub, prioSub]);
 
   /* ----------------------- UPDATE HANDLERS ----------------------- */
   const handleSwitchDepartment = useCallback(
@@ -193,13 +252,34 @@ export default function ActionMenu({
         })
       );
 
-     
       if (changeProductDepartment.fulfilled.match(res)) {
         if (onRefresh) await onRefresh();
         onClose();
         closeAllSubmenus();
       } else {
         console.error("Failed to update department:", res);
+      }
+    },
+    [dispatch, product, onRefresh, onClose, closeAllSubmenus]
+  );
+
+  const handleSwitchSubDepartment = useCallback(
+    async (subDept) => {
+      if (!product) return;
+
+      const res = await dispatch(
+        changeProductSubDepartment({
+          pp_id: product.id,
+          sub_department_id: subDept.id,
+        })
+      );
+
+      if (changeProductSubDepartment.fulfilled.match(res)) {
+        if (onRefresh) await onRefresh();
+        onClose();
+        closeAllSubmenus();
+      } else {
+        console.error("Failed to update sub-department:", res);
       }
     },
     [dispatch, product, onRefresh, onClose, closeAllSubmenus]
@@ -233,7 +313,6 @@ export default function ActionMenu({
 
       setPriority(lvl);
 
-      // Wait for Redux async action to complete
       const res = await dispatch(
         setNewPriority({
           pp_id: product.id,
@@ -241,7 +320,6 @@ export default function ActionMenu({
         })
       );
 
-      // If success
       if (setNewPriority.fulfilled.match(res)) {
         if (onRefresh) await onRefresh();
         onClose();
@@ -260,6 +338,14 @@ export default function ActionMenu({
 
   const currentDeptName =
     departments.find((d) => d.id === product?.department_id)?.name || "-";
+
+  // Resolve current sub-department name from the fetched active list
+  const currentSubDeptName = useMemo(() => {
+    if (!product?.sub_department_id) return null;
+    return (
+      activeSubDepartments.find((s) => s.id === product.sub_department_id)?.name || "-"
+    );
+  }, [activeSubDepartments, product?.sub_department_id]);
 
   const currentSupervisorName =
     supervisorData.find((s) => s.id === selectedSupervisor)?.name || "None";
@@ -285,7 +371,7 @@ export default function ActionMenu({
         transformOrigin={{ horizontal: "right", vertical: "top" }}
         anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
       >
-        {/* Switch Department (only show if user has permission) */}
+        {/* Transfer To (Switch Department) */}
         {hasPermission("productions.switch_to") && (
           <MenuItem
             onClick={(e) => {
@@ -295,7 +381,7 @@ export default function ActionMenu({
             }}
           >
             <Box display="flex" width="100%" justifyContent="space-between" alignItems="center">
-              <Typography minWidth={90}>Switch To:</Typography>
+              <Typography minWidth={90}>Transfer To:</Typography>
               <Typography fontWeight={600} fontSize={14}>
                 {currentDeptName}
               </Typography>
@@ -303,7 +389,27 @@ export default function ActionMenu({
           </MenuItem>
         )}
 
-        {/* Supervisor (only show if user has permission) */}
+        {/* Sub-Department — only shown when product has a sub_department_id */}
+        {hasPermission("productions.switch_to")  && (
+          <MenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              closeAllSubmenus();
+              switchSubDept.openAt(e.currentTarget);
+            }}
+          >
+            <Box display="flex" width="100%" justifyContent="space-between" alignItems="center">
+              <Typography minWidth={90} color="text.secondary" fontSize={14}>
+                Sub-Dept:
+              </Typography>
+              <Typography fontWeight={600} fontSize={14}>
+                {currentSubDeptName}
+              </Typography>
+            </Box>
+          </MenuItem>
+        )}
+
+        {/* Supervisor */}
         {hasPermission("productions.change_supervisor") && (
           <MenuItem
             onClick={(e) => {
@@ -321,7 +427,7 @@ export default function ActionMenu({
           </MenuItem>
         )}
 
-        {/* Priority (only show if user has permission) */}
+        {/* Priority */}
         {hasPermission("productions.change_priority") && (
           <MenuItem
             onClick={(e) => {
@@ -363,8 +469,6 @@ export default function ActionMenu({
         {hasPermission("productions.request_stock") && (
           <>
             <Divider sx={{ my: 1 }} />
-
-            {/* Request Stock */}
             <MenuItem onClick={onOpenRequestStock}>
               <Box display="flex" width="100%" justifyContent="center" alignItems="center">
                 <Typography fontWeight={500} color="primary">
@@ -391,6 +495,16 @@ export default function ActionMenu({
           onSelect={handleSwitchDepartment}
           departments={departments}
           currentDepartment={product?.department_id}
+        />
+      )}
+
+      {/* Sub-department submenu — only mounted when product has sub_department_id */}
+      {hasPermission("productions.switch_to")  && (
+        <SwitchSubDeptSubmenu
+          submenu={switchSubDept}
+          onSelect={handleSwitchSubDepartment}
+          subDepartments={activeSubDepartments}
+          currentSubDepartment={product?.sub_department_id}
         />
       )}
 

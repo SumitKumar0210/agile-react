@@ -132,7 +132,7 @@ export const sendQuotationMail = createAsyncThunk(
   "quotation/sendQuotationMail",
   async (values, { rejectWithValue }) => {
     try {
-      const res = await api.post('admin/quotation-order/send-quotation-mail', values);
+      const res = await api.post('admin/mail/send-quotation-mail', values);
       successMessage(res.data.message);
       return { values };
     } catch (error) {

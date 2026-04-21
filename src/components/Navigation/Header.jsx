@@ -60,9 +60,9 @@ const Header = ({ mobileOpen, onToggleSidebar }) => {
             <IconButton edge="start" onClick={onToggleSidebar} sx={{ mr: 1 }}>
               <HiOutlineMenu size={22} />
             </IconButton>
-            {/* Title (Aarish Ply) */}
+            {/* Title (AGLIE) */}
             <Typography variant="h6" sx={{ fontWeight: 600, display: { xs: 'block', sm: 'none' } }}>
-              Aarish Ply
+              AGLIE
             </Typography>
           </Box>
 

@@ -51,6 +51,116 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { successMessage, errorMessage } from "../../toast";
 
+const printStyles = `
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  @media print {
+    body {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      color: #000;
+    }
+
+    .no-print {
+      display: none !important;
+    }
+
+    .print-container {
+      background: #fff !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+    }
+
+    /* Logo */
+    .print-logo {
+      display: flex !important;
+      justify-content: center !important;
+      margin: 0 0 8px 0 !important;
+      padding: 0 !important;
+    }
+
+    .print-logo img {
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    /* Header row */
+    .challan-header-row {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      margin-bottom: 12px !important;
+    }
+
+    /* From / To / Shipping section */
+    .from-to-section {
+      display: flex !important;
+      justify-content: space-between !important;
+      margin-bottom: 12px !important;
+    }
+
+    .from-box {
+      width: 32% !important;
+      text-align: left !important;
+    }
+
+    .to-box {
+      width: 32% !important;
+      display: flex !important;
+      justify-content: center !important;
+      text-align: left !important;
+    }
+
+    .shipping-box {
+      width: 32% !important;
+      text-align: right !important;
+    }
+
+    /* Table */
+    table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      margin-bottom: 12px !important;
+    }
+
+    th, td {
+      border: 1px solid #ccc !important;
+      padding: 5px 8px !important;
+      text-align: left !important;
+      font-size: 11px !important;
+    }
+
+    th {
+      background-color: #f0f0f0 !important;
+      font-weight: 600 !important;
+    }
+
+    /* Order terms */
+    .order-terms-box {
+      width: 48% !important;
+    }
+
+    /* Hide image previews in print */
+    .image-preview-dialog {
+      display: none !important;
+    }
+
+    .print-product-img {
+      display: inline-block !important;
+      width: 36px !important;
+      height: 36px !important;
+      object-fit: cover !important;
+      vertical-align: middle !important;
+      margin-right: 4px !important;
+    }
+  }
+`;
+
 const Challan = () => {
     const { id } = useParams();
     const { appDetails } = useAuth();
@@ -58,7 +168,7 @@ const Challan = () => {
     const navigate = useNavigate();
     const contentRef = useRef(null);
 
-    const imageUrl = import.meta.env.VITE_MEDIA_URL;
+    const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
     const [items, setItems] = useState([]);
     const [quotationDetails, setQuotationDetails] = useState(null);
@@ -88,7 +198,7 @@ const Challan = () => {
     const { data: states = [] } = useSelector((state) => state.state);
     const { data: fetchedShippingAddresses = [], loading: shippingLoading } = useSelector((state) => state.shippingAddress);
 
-
+    const logoUrl = localStorage.getItem("logo");
     const customerId = billData.customer_id;
 
     const addressValidationSchema = Yup.object({
@@ -102,22 +212,10 @@ const Challan = () => {
 
     const handlePrint = useReactToPrint({
         contentRef,
-        documentTitle: `Quote_${quotationDetails?.batch_no || "Invoice"}`,
-        pageStyle: `
-      @page {
-        size: A4 landscape;
-        margin: 5mm;
-      }
-      @media print {
-        body {
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-      }
-    `,
+        documentTitle: `Challan_${quotationDetails?.invoice_no || "Challan"}`,
+        pageStyle: printStyles,
     });
 
-    // Load quotation data
     useEffect(() => {
         if (id) {
             dispatch(fetchBillById(id));
@@ -130,50 +228,41 @@ const Challan = () => {
         }
     }, [errors]);
 
-    // Fetch states when modal opens
     useEffect(() => {
         if (openShippingModal || openAddressModal) {
             dispatch(fetchStates());
         }
     }, [openShippingModal, openAddressModal, dispatch]);
 
-    // Fetch shipping addresses when address type changes to "shipping"
     useEffect(() => {
         if (addressType === "shipping" && customerId) {
             dispatch(fetchShippingAddressById(customerId));
         }
     }, [addressType, customerId, dispatch]);
 
-    // Update shipping addresses when fetched from API
     useEffect(() => {
         if (fetchedShippingAddresses && fetchedShippingAddresses.length > 0) {
-
             setShippingAddresses(fetchedShippingAddresses);
         }
     }, [fetchedShippingAddresses]);
 
-    // Parse and set Bill data
     useEffect(() => {
         if (billData && billData.id) {
             try {
                 setItems(billData.product || []);
                 setQuotationDetails(billData);
 
-
-
-                // Check if vehicle_no is null - if yes, open modal
                 if (!billData.vehicle_no) {
                     setOpenShippingModal(true);
                     setShippingDetailsSubmitted(false);
                 } else {
-                    // If vehicle_no exists, mark as submitted
                     setQuoteShippingAddress({
                         name: billData.customer?.name,
                         address: billData.shipping_address?.address ?? billData.customer?.address,
                         city: billData.shipping_address?.city ?? billData.customer?.city,
                         state: billData.shipping_address?.state?.name ?? billData.customer?.state?.name,
                         zip_code: billData.shipping_address?.zip_code ?? billData.customer?.zip_code,
-                    })
+                    });
                     setShippingDetailsSubmitted(true);
                 }
             } catch (error) {
@@ -182,25 +271,18 @@ const Challan = () => {
         }
     }, [billData]);
 
-    // Validate vehicle number
     const validateVehicleNumber = (value) => {
-        // Remove spaces and convert to uppercase
         const cleanValue = value.replace(/\s+/g, '').toUpperCase();
-
-        // Indian vehicle number format: XX00XX0000 or XX-00-XX-0000
-        // Examples: MH12AB1234, DL01CA9988, KA05MH1234
         const vehicleRegex = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
 
         if (!value.trim()) {
             setVehicleError("Vehicle number is required");
             return false;
         }
-
         if (!vehicleRegex.test(cleanValue)) {
             setVehicleError("Invalid vehicle number format (e.g., MH12AB1234)");
             return false;
         }
-
         setVehicleError("");
         return true;
     };
@@ -208,20 +290,15 @@ const Challan = () => {
     const handleVehicleNumberChange = (e) => {
         const value = e.target.value.toUpperCase();
         setVehicleNumber(value);
-        if (vehicleError) {
-            validateVehicleNumber(value);
-        }
+        if (vehicleError) validateVehicleNumber(value);
     };
 
     const handleCloseShippingModal = () => {
         if (isSubmitting) return;
-
-        // Don't allow closing without submission if vehicle_no is null
         if (!quotationDetails?.vehicle_no && !shippingDetailsSubmitted) {
             errorMessage("Please provide shipping details before proceeding");
             return;
         }
-
         setOpenShippingModal(false);
         setSelectedAddressId("");
         setVehicleNumber("");
@@ -241,13 +318,8 @@ const Challan = () => {
         setAddressError("");
     };
 
-    const handleOpenAddressModal = () => {
-        setOpenAddressModal(true);
-    };
-
-    const handleCloseAddressModal = () => {
-        setOpenAddressModal(false);
-    };
+    const handleOpenAddressModal = () => setOpenAddressModal(true);
+    const handleCloseAddressModal = () => setOpenAddressModal(false);
 
     const handleDeleteClick = (addressId) => {
         setDeleteAddressId(addressId);
@@ -256,24 +328,12 @@ const Challan = () => {
 
     const handleConfirmDelete = async () => {
         if (!deleteAddressId) return;
-
         setIsDeleting(true);
         try {
             const result = await dispatch(deleteShippingAddress(deleteAddressId));
-
-            if (result.error) {
-                errorMessage("Failed to delete address. Please try again.");
-                return;
-            }
-
-            // If the deleted address was selected, clear selection
-            if (selectedAddressId === deleteAddressId.toString()) {
-                setSelectedAddressId("");
-            }
-
-            // Refresh shipping addresses
+            if (result.error) { errorMessage("Failed to delete address. Please try again."); return; }
+            if (selectedAddressId === deleteAddressId.toString()) setSelectedAddressId("");
             await dispatch(fetchShippingAddressById(customerId));
-
             successMessage("Address deleted successfully");
             setOpenDeleteDialog(false);
             setDeleteAddressId(null);
@@ -295,17 +355,9 @@ const Challan = () => {
                 address: values.address,
                 customer_id: customerId,
             };
-
             const res = await dispatch(addShippingAddress(newAddress));
-
-            if (res.error) {
-                errorMessage("Failed to add address. Please try again.");
-                return;
-            }
-
-            // Refresh shipping addresses after adding
+            if (res.error) { errorMessage("Failed to add address. Please try again."); return; }
             await dispatch(fetchShippingAddressById(customerId));
-
             successMessage("Address added successfully");
             resetForm();
             handleCloseAddressModal();
@@ -319,46 +371,27 @@ const Challan = () => {
 
     const handleSubmitShipping = async () => {
         let hasError = false;
-
-        // Validate vehicle number
-        if (!validateVehicleNumber(vehicleNumber)) {
-            hasError = true;
-        }
-
-        // Validate address selection
+        if (!validateVehicleNumber(vehicleNumber)) hasError = true;
         if (addressType !== 'customer' && !selectedAddressId) {
             setAddressError("Please select a shipping address");
             hasError = true;
         } else {
             setAddressError("");
         }
-
-        // If validation fails, stop submission
-        if (hasError) {
-            return;
-        }
+        if (hasError) return;
 
         setIsSubmitting(true);
         try {
             let selectedAddress;
-
-            // Get selected address based on address type
             if (addressType !== "customer") {
                 selectedAddress = shippingAddresses.find((addr) => addr.id === parseInt(selectedAddressId));
             }
-            // if (addressType === "customer") {
-            //     selectedAddress = customerAddresses.find((addr) => addr.id === parseInt(selectedAddressId));
-            // } else {
-            //     selectedAddress = shippingAddresses.find((addr) => addr.id === parseInt(selectedAddressId));
-            // }
-
             if (addressType !== "customer" && !selectedAddress) {
                 errorMessage("Selected address not found");
                 setIsSubmitting(false);
                 return;
             }
 
-            // Prepare shipping data
             const shippingData = {
                 vehicle_number: vehicleNumber.replace(/\s+/g, '').toUpperCase(),
                 shipping_address_id: selectedAddress?.id ?? null,
@@ -366,27 +399,13 @@ const Challan = () => {
                 id: billData.id,
             };
 
-            console.log("Shipping Data:", shippingData);
-
-            // Dispatch update with shipping details
             const result = await dispatch(dispatchProduct(shippingData));
+            if (result.error) { errorMessage("Failed to submit shipping details. Please try again.", result.error); return; }
 
-
-            if (result.error) {
-                errorMessage("Failed to submit shipping details. Please try again.", result.error);
-                return;
-            }
-            await dispatch(clearCurrentBill())
-
-            // Mark shipping details as submitted
+            await dispatch(clearCurrentBill());
             setShippingDetailsSubmitted(true);
-
             successMessage("Shipping details submitted successfully");
-
-            // Refresh quotation data
             await dispatch(fetchBillById(id));
-
-            // Close modal
             setOpenShippingModal(false);
         } catch (error) {
             console.error("Error submitting shipping:", error);
@@ -401,350 +420,147 @@ const Challan = () => {
         setErrorOpen(false);
     };
 
-
-    const mediaUrl = import.meta.env.VITE_MEDIA_URL;
-
-    // Format date helper
     const formatDate = (dateString) => {
         if (!dateString) return "N/A";
         const date = new Date(dateString);
-        return date.toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-        });
+        return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
     };
 
-    // Show loader while data is loading
     if (billLoading) {
         return (
-            <Box
-                sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    minHeight: "60vh",
-                }}
-            >
+            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
                 <CircularProgress size={60} />
             </Box>
         );
     }
 
-    // Show modal if shipping details required and not yet submitted
     const shouldShowModal = !quotationDetails?.vehicle_no && !shippingDetailsSubmitted;
 
-    // Don't show main content if modal is required but not submitted
     if (shouldShowModal) {
         return (
             <>
                 {/* Shipping Details Modal */}
-                <Dialog
-                    open={openShippingModal}
-                    onClose={handleCloseShippingModal}
-                    maxWidth="sm"
-                    fullWidth
-                    disableEscapeKeyDown={true}
-                >
+                <Dialog open={openShippingModal} onClose={handleCloseShippingModal} maxWidth="sm" fullWidth disableEscapeKeyDown={true}>
                     <DialogTitle sx={{ borderBottom: "1px solid #ddd" }}>
                         Shipping Details Required
-                        <IconButton
-                            aria-label="close"
-                            onClick={handleCloseShippingModal}
-                            disabled={isSubmitting}
-                            sx={{
-                                position: "absolute",
-                                right: 8,
-                                top: 8,
-                                color: (theme) => theme.palette.grey[500],
-                            }}
-                        >
+                        <IconButton aria-label="close" onClick={handleCloseShippingModal} disabled={isSubmitting}
+                            sx={{ position: "absolute", right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}>
                             <CloseIcon />
                         </IconButton>
                     </DialogTitle>
-
                     <DialogContent sx={{ mt: 2 }}>
-                        <TextField
-                            fullWidth
-                            label="Vehicle Number"
-                            placeholder="e.g., MH12AB1234"
-                            value={vehicleNumber}
-                            onChange={handleVehicleNumberChange}
-                            onBlur={() => validateVehicleNumber(vehicleNumber)}
-                            disabled={isSubmitting}
-                            error={!!vehicleError}
-                            helperText={vehicleError || "Format: XX00XX0000 (e.g., MH12AB1234)"}
-                            required
-                            sx={{ mb: 3, mt: 2 }}
-                        />
+                        <TextField fullWidth label="Vehicle Number" placeholder="e.g., MH12AB1234"
+                            value={vehicleNumber} onChange={handleVehicleNumberChange}
+                            onBlur={() => validateVehicleNumber(vehicleNumber)} disabled={isSubmitting}
+                            error={!!vehicleError} helperText={vehicleError || "Format: XX00XX0000 (e.g., MH12AB1234)"}
+                            required sx={{ mb: 3, mt: 2 }} />
 
                         <Box sx={{ mb: 3 }}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-                                Address Type
-                            </Typography>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>Address Type</Typography>
                             <RadioGroup row value={addressType} onChange={handleAddressTypeChange}>
-                                <FormControlLabel
-                                    value="customer"
-                                    control={<Radio disabled={isSubmitting} />}
-                                    label="Use Customer Address"
-                                />
-                                <FormControlLabel
-                                    value="shipping"
-                                    control={<Radio disabled={isSubmitting} />}
-                                    label="Use Shipping Address"
-                                />
+                                <FormControlLabel value="customer" control={<Radio disabled={isSubmitting} />} label="Use Customer Address" />
+                                <FormControlLabel value="shipping" control={<Radio disabled={isSubmitting} />} label="Use Shipping Address" />
                             </RadioGroup>
                         </Box>
 
                         {addressType === "shipping" && (
                             <>
                                 <Box sx={{ mb: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                                        Select Shipping Address
-                                    </Typography>
-                                    <Button
-                                        variant="outlined"
-                                        startIcon={<AddIcon />}
-                                        onClick={handleOpenAddressModal}
-                                        disabled={isSubmitting}
-                                        size="small"
-                                    >
+                                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Select Shipping Address</Typography>
+                                    <Button variant="outlined" startIcon={<AddIcon />} onClick={handleOpenAddressModal} disabled={isSubmitting} size="small">
                                         Add New
                                     </Button>
                                 </Box>
-
                                 {shippingLoading ? (
-                                    <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-                                        <CircularProgress size={30} />
-                                    </Box>
+                                    <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}><CircularProgress size={30} /></Box>
                                 ) : shippingAddresses.length > 0 ? (
                                     <>
                                         <RadioGroup value={selectedAddressId} onChange={(e) => handleAddressSelection(e.target.value)}>
                                             {shippingAddresses.map((address) => {
                                                 const state = states.find((s) => s.id === address.state_id);
                                                 return (
-                                                    <Box
-                                                        key={address.id}
-                                                        sx={{
-                                                            position: "relative",
-                                                            border: `1px solid ${addressError ? '#d32f2f' : '#e0e0e0'}`,
-                                                            borderRadius: 1,
-                                                            mb: 1,
-                                                            "&:hover": {
-                                                                backgroundColor: "#f5f5f5",
-                                                                "& .delete-btn": {
-                                                                    opacity: 1,
-                                                                }
-                                                            },
-                                                        }}
-                                                    >
-                                                        <FormControlLabel
-                                                            value={address.id.toString()}
-                                                            control={<Radio disabled={isSubmitting} />}
+                                                    <Box key={address.id} sx={{
+                                                        position: "relative",
+                                                        border: `1px solid ${addressError ? '#d32f2f' : '#e0e0e0'}`,
+                                                        borderRadius: 1, mb: 1,
+                                                        "&:hover": { backgroundColor: "#f5f5f5", "& .delete-btn": { opacity: 1 } },
+                                                    }}>
+                                                        <FormControlLabel value={address.id.toString()} control={<Radio disabled={isSubmitting} />}
                                                             label={
                                                                 <Box sx={{ ml: 1 }}>
-                                                                    <Typography variant="body2">
-                                                                        {address.address}, {address.city}
-                                                                    </Typography>
-                                                                    <Typography variant="caption" color="text.secondary">
-                                                                        {state?.name || "N/A"}, {address.zip_code}
-                                                                    </Typography>
+                                                                    <Typography variant="body2">{address.address}, {address.city}</Typography>
+                                                                    <Typography variant="caption" color="text.secondary">{state?.name || "N/A"}, {address.zip_code}</Typography>
                                                                 </Box>
                                                             }
-                                                            sx={{
-                                                                width: "100%",
-                                                                p: 1,
-                                                                m: 0,
-                                                                pr: 6,
-                                                            }}
-                                                        />
-                                                        <IconButton
-                                                            className="delete-btn"
-                                                            size="small"
-                                                            color="error"
-                                                            onClick={() => handleDeleteClick(address.id)}
-                                                            disabled={isSubmitting}
-                                                            sx={{
-                                                                position: "absolute",
-                                                                right: 8,
-                                                                top: "50%",
-                                                                transform: "translateY(-50%)",
-                                                                opacity: 0,
-                                                                transition: "opacity 0.2s",
-                                                            }}
-                                                        >
+                                                            sx={{ width: "100%", p: 1, m: 0, pr: 6 }} />
+                                                        <IconButton className="delete-btn" size="small" color="error"
+                                                            onClick={() => handleDeleteClick(address.id)} disabled={isSubmitting}
+                                                            sx={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", opacity: 0, transition: "opacity 0.2s" }}>
                                                             <DeleteIcon fontSize="small" />
                                                         </IconButton>
                                                     </Box>
                                                 );
                                             })}
                                         </RadioGroup>
-                                        {addressError && (
-                                            <FormHelperText error sx={{ mt: 1, ml: 2 }}>
-                                                {addressError}
-                                            </FormHelperText>
-                                        )}
+                                        {addressError && <FormHelperText error sx={{ mt: 1, ml: 2 }}>{addressError}</FormHelperText>}
                                     </>
                                 ) : (
-                                    <Box
-                                        sx={{
-                                            p: 2,
-                                            border: `1px solid ${addressError ? '#d32f2f' : '#e0e0e0'}`,
-                                            borderRadius: 1,
-                                            backgroundColor: "#fff4e5",
-                                            textAlign: "center",
-                                        }}
-                                    >
-                                        <Typography color="text.secondary" sx={{ mb: 1 }}>
-                                            No shipping addresses found.
-                                        </Typography>
-                                        <Button
-                                            variant="outlined"
-                                            startIcon={<AddIcon />}
-                                            onClick={handleOpenAddressModal}
-                                            disabled={isSubmitting}
-                                            size="small"
-                                        >
+                                    <Box sx={{ p: 2, border: `1px solid ${addressError ? '#d32f2f' : '#e0e0e0'}`, borderRadius: 1, backgroundColor: "#fff4e5", textAlign: "center" }}>
+                                        <Typography color="text.secondary" sx={{ mb: 1 }}>No shipping addresses found.</Typography>
+                                        <Button variant="outlined" startIcon={<AddIcon />} onClick={handleOpenAddressModal} disabled={isSubmitting} size="small">
                                             Add New Address
                                         </Button>
-                                        {addressError && (
-                                            <FormHelperText error sx={{ mt: 1 }}>
-                                                {addressError}
-                                            </FormHelperText>
-                                        )}
+                                        {addressError && <FormHelperText error sx={{ mt: 1 }}>{addressError}</FormHelperText>}
                                     </Box>
                                 )}
                             </>
                         )}
                     </DialogContent>
-
                     <DialogActions sx={{ px: 3, py: 2 }}>
-                        <Button
-                            variant="contained"
-                            color="success"
-                            onClick={handleSubmitShipping}
-                            disabled={isSubmitting}
-                            startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : null}
-                            fullWidth
-                        >
+                        <Button variant="contained" color="success" onClick={handleSubmitShipping} disabled={isSubmitting}
+                            startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : null} fullWidth>
                             {isSubmitting ? "Submitting..." : "Submit & Continue"}
                         </Button>
                     </DialogActions>
                 </Dialog>
 
                 {/* Add New Address Modal */}
-                <Dialog
-                    open={openAddressModal}
-                    onClose={handleCloseAddressModal}
-                    maxWidth="sm"
-                    fullWidth
-                    disableEscapeKeyDown={isSubmitting}
-                >
+                <Dialog open={openAddressModal} onClose={handleCloseAddressModal} maxWidth="sm" fullWidth disableEscapeKeyDown={isSubmitting}>
                     <DialogTitle sx={{ borderBottom: "1px solid #ddd" }}>
                         Add New Shipping Address
-                        <IconButton
-                            aria-label="close"
-                            onClick={handleCloseAddressModal}
-                            disabled={isSubmitting}
-                            sx={{
-                                position: "absolute",
-                                right: 8,
-                                top: 8,
-                                color: (theme) => theme.palette.grey[500],
-                            }}
-                        >
+                        <IconButton aria-label="close" onClick={handleCloseAddressModal} disabled={isSubmitting}
+                            sx={{ position: "absolute", right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}>
                             <CloseIcon />
                         </IconButton>
                     </DialogTitle>
-
-                    <Formik
-                        initialValues={{
-                            state_id: "",
-                            city: "",
-                            zip_code: "",
-                            address: "",
-                        }}
-                        validationSchema={addressValidationSchema}
-                        onSubmit={handleAddNewAddress}
-                    >
+                    <Formik initialValues={{ state_id: "", city: "", zip_code: "", address: "" }}
+                        validationSchema={addressValidationSchema} onSubmit={handleAddNewAddress}>
                         {({ values, errors, touched, handleChange, handleBlur }) => (
                             <Form>
                                 <DialogContent sx={{ mt: 1 }}>
-                                    <TextField
-                                        select
-                                        fullWidth
-                                        label="State"
-                                        name="state_id"
-                                        value={values.state_id}
-                                        size="small"
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        error={touched.state_id && Boolean(errors.state_id)}
-                                        helperText={touched.state_id && errors.state_id}
-                                        disabled={isSubmitting}
-                                        sx={{ mb: 2 }}
-                                    >
-                                        {states.map((state) => (
-                                            <MenuItem key={state.id} value={state.id}>
-                                                {state.name}
-                                            </MenuItem>
-                                        ))}
+                                    <TextField select fullWidth label="State" name="state_id" value={values.state_id} size="small"
+                                        onChange={handleChange} onBlur={handleBlur}
+                                        error={touched.state_id && Boolean(errors.state_id)} helperText={touched.state_id && errors.state_id}
+                                        disabled={isSubmitting} sx={{ mb: 2 }}>
+                                        {states.map((state) => <MenuItem key={state.id} value={state.id}>{state.name}</MenuItem>)}
                                     </TextField>
-
-                                    <TextField
-                                        fullWidth
-                                        label="City"
-                                        name="city"
-                                        value={values.city}
-                                        size="small"
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        error={touched.city && Boolean(errors.city)}
-                                        helperText={touched.city && errors.city}
-                                        disabled={isSubmitting}
-                                        sx={{ mb: 2 }}
-                                    />
-
-                                    <TextField
-                                        fullWidth
-                                        label="Zip Code"
-                                        name="zip_code"
-                                        value={values.zip_code}
-                                        size="small"
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        error={touched.zip_code && Boolean(errors.zip_code)}
-                                        helperText={touched.zip_code && errors.zip_code}
-                                        disabled={isSubmitting}
-                                        sx={{ mb: 2 }}
-                                    />
-
-                                    <TextField
-                                        fullWidth
-                                        label="Address"
-                                        name="address"
-                                        multiline
-                                        rows={3}
-                                        value={values.address}
-                                        size="small"
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        error={touched.address && Boolean(errors.address)}
-                                        helperText={touched.address && errors.address}
-                                        disabled={isSubmitting}
-                                    />
+                                    <TextField fullWidth label="City" name="city" value={values.city} size="small"
+                                        onChange={handleChange} onBlur={handleBlur}
+                                        error={touched.city && Boolean(errors.city)} helperText={touched.city && errors.city}
+                                        disabled={isSubmitting} sx={{ mb: 2 }} />
+                                    <TextField fullWidth label="Zip Code" name="zip_code" value={values.zip_code} size="small"
+                                        onChange={handleChange} onBlur={handleBlur}
+                                        error={touched.zip_code && Boolean(errors.zip_code)} helperText={touched.zip_code && errors.zip_code}
+                                        disabled={isSubmitting} sx={{ mb: 2 }} />
+                                    <TextField fullWidth label="Address" name="address" multiline rows={3} value={values.address} size="small"
+                                        onChange={handleChange} onBlur={handleBlur}
+                                        error={touched.address && Boolean(errors.address)} helperText={touched.address && errors.address}
+                                        disabled={isSubmitting} />
                                 </DialogContent>
-
                                 <DialogActions sx={{ px: 3, py: 2 }}>
-                                    <Button onClick={handleCloseAddressModal} disabled={isSubmitting}>
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        type="submit"
-                                        variant="contained"
-                                        disabled={isSubmitting}
-                                        startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : null}
-                                    >
+                                    <Button onClick={handleCloseAddressModal} disabled={isSubmitting}>Cancel</Button>
+                                    <Button type="submit" variant="contained" disabled={isSubmitting}
+                                        startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : null}>
                                         {isSubmitting ? "Adding..." : "Add Address"}
                                     </Button>
                                 </DialogActions>
@@ -757,159 +573,63 @@ const Challan = () => {
                 <Dialog open={openDeleteDialog} onClose={() => !isDeleting && setOpenDeleteDialog(false)}>
                     <DialogTitle>Delete Shipping Address?</DialogTitle>
                     <DialogContent style={{ minWidth: "300px" }}>
-                        <Typography>
-                            Are you sure you want to delete this address? This action cannot be undone.
-                        </Typography>
+                        <Typography>Are you sure you want to delete this address? This action cannot be undone.</Typography>
                     </DialogContent>
                     <DialogActions>
-                        <Button onClick={() => setOpenDeleteDialog(false)} disabled={isDeleting}>
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={handleConfirmDelete}
-                            variant="contained"
-                            color="error"
-                            disabled={isDeleting}
-                            startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}
-                        >
+                        <Button onClick={() => setOpenDeleteDialog(false)} disabled={isDeleting}>Cancel</Button>
+                        <Button onClick={handleConfirmDelete} variant="contained" color="error" disabled={isDeleting}
+                            startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}>
                             {isDeleting ? "Deleting..." : "Delete"}
                         </Button>
                     </DialogActions>
                 </Dialog>
 
                 {/* Errors Dialog */}
-                <Dialog
-                    open={errorOpen}
-                    onClose={closeErrorsModel}  // Fixed: removed ()
-                    maxWidth="md"
-                    fullWidth
-                    PaperProps={{
-                        sx: {
-                            borderRadius: 2,
-                        },
-                    }}
-                >
-                    <DialogTitle
-                        sx={{
-                            borderBottom: "1px solid #ddd",
-                            bgcolor: "#fff4e5",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1,
-                        }}
-                    >
+                <Dialog open={errorOpen} onClose={closeErrorsModel} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+                    <DialogTitle sx={{ borderBottom: "1px solid #ddd", bgcolor: "#fff4e5", display: "flex", alignItems: "center", gap: 1 }}>
                         <WarningAmberIcon sx={{ color: "#ff9800", fontSize: 28 }} />
-                        <Typography variant="h6" component="span" sx={{ flexGrow: 1 }}>
-                            Insufficient Stock Alert
-                        </Typography>
-                        <IconButton
-                            aria-label="close"
-                            onClick={closeErrorsModel}  // Fixed: removed ()
-                            sx={{
-                                color: (theme) => theme.palette.grey[500],
-                            }}
-                        >
+                        <Typography variant="h6" component="span" sx={{ flexGrow: 1 }}>Insufficient Stock Alert</Typography>
+                        <IconButton aria-label="close" onClick={closeErrorsModel} sx={{ color: (theme) => theme.palette.grey[500] }}>
                             <CloseIcon />
                         </IconButton>
                     </DialogTitle>
-
                     <DialogContent sx={{ mt: 2 }}>
-                        {errors && errors.length > 0 ? (  // Fixed: proper condition check
+                        {errors && errors.length > 0 ? (
                             <>
                                 <Alert severity="warning" sx={{ mb: 3 }}>
                                     <AlertTitle>Stock Availability Issue</AlertTitle>
-                                    The following products have insufficient stock. Please update quantities
-                                    or contact inventory management.
+                                    The following products have insufficient stock. Please update quantities or contact inventory management.
                                 </Alert>
-
                                 <TableContainer component={Paper} variant="outlined">
                                     <Table size="small">
                                         <TableHead>
                                             <TableRow sx={{ bgcolor: "#f5f5f5" }}>
                                                 <TableCell sx={{ fontWeight: 600 }}>S.No</TableCell>
                                                 <TableCell sx={{ fontWeight: 600 }}>Product Name</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 600 }}>
-                                                    Required Qty
-                                                </TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 600 }}>
-                                                    Available Qty
-                                                </TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 600 }}>
-                                                    Shortage
-                                                </TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 600 }}>
-                                                    Status
-                                                </TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 600 }}>Required Qty</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 600 }}>Available Qty</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 600 }}>Shortage</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 600 }}>Status</TableCell>
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
                                             {errors.map((error, index) => {
                                                 const shortage = error.required_qty - error.available_qty;
                                                 const isOutOfStock = error.available_qty === 0;
-
                                                 return (
-                                                    <TableRow
-                                                        key={error.product_id || index}
-                                                        sx={{
-                                                            "&:hover": {
-                                                                bgcolor: "#fff4e5",
-                                                            },
-                                                        }}
-                                                    >
+                                                    <TableRow key={error.product_id || index} sx={{ "&:hover": { bgcolor: "#fff4e5" } }}>
                                                         <TableCell>{index + 1}</TableCell>
                                                         <TableCell>
-                                                            <Box
-                                                                sx={{
-                                                                    display: "flex",
-                                                                    alignItems: "center",
-                                                                    gap: 1,
-                                                                }}
-                                                            >
-                                                                <InventoryIcon
-                                                                    sx={{
-                                                                        color: isOutOfStock ? "#d32f2f" : "#ff9800",
-                                                                        fontSize: 20,
-                                                                    }}
-                                                                />
-                                                                <Typography variant="body2">
-                                                                    {error.product_name}
-                                                                </Typography>
+                                                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                                                <InventoryIcon sx={{ color: isOutOfStock ? "#d32f2f" : "#ff9800", fontSize: 20 }} />
+                                                                <Typography variant="body2">{error.product_name}</Typography>
                                                             </Box>
                                                         </TableCell>
+                                                        <TableCell align="center"><Typography variant="body2" sx={{ fontWeight: 600 }}>{error.required_qty}</Typography></TableCell>
+                                                        <TableCell align="center"><Typography variant="body2" sx={{ color: isOutOfStock ? "#d32f2f" : "#ff9800", fontWeight: 600 }}>{error.available_qty}</Typography></TableCell>
+                                                        <TableCell align="center"><Typography variant="body2" sx={{ color: "#d32f2f", fontWeight: 600 }}>{shortage}</Typography></TableCell>
                                                         <TableCell align="center">
-                                                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                                                {error.required_qty}
-                                                            </Typography>
-                                                        </TableCell>
-                                                        <TableCell align="center">
-                                                            <Typography
-                                                                variant="body2"
-                                                                sx={{
-                                                                    color: isOutOfStock ? "#d32f2f" : "#ff9800",
-                                                                    fontWeight: 600,
-                                                                }}
-                                                            >
-                                                                {error.available_qty}
-                                                            </Typography>
-                                                        </TableCell>
-                                                        <TableCell align="center">
-                                                            <Typography
-                                                                variant="body2"
-                                                                sx={{
-                                                                    color: "#d32f2f",
-                                                                    fontWeight: 600,
-                                                                }}
-                                                            >
-                                                                {shortage}
-                                                            </Typography>
-                                                        </TableCell>
-                                                        <TableCell align="center">
-                                                            <Chip
-                                                                label={isOutOfStock ? "Out of Stock" : "Low Stock"}
-                                                                size="small"
-                                                                color={isOutOfStock ? "error" : "warning"}
-                                                                sx={{ fontWeight: 600 }}
-                                                            />
+                                                            <Chip label={isOutOfStock ? "Out of Stock" : "Low Stock"} size="small" color={isOutOfStock ? "error" : "warning"} sx={{ fontWeight: 600 }} />
                                                         </TableCell>
                                                     </TableRow>
                                                 );
@@ -917,72 +637,40 @@ const Challan = () => {
                                         </TableBody>
                                     </Table>
                                 </TableContainer>
-
-                                <Box
-                                    sx={{
-                                        mt: 2,
-                                        p: 2,
-                                        bgcolor: "#f5f5f5",
-                                        borderRadius: 1,
-                                        border: "1px solid #e0e0e0",
-                                    }}
-                                >
-                                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                                        Action Required:
-                                    </Typography>
+                                <Box sx={{ mt: 2, p: 2, bgcolor: "#f5f5f5", borderRadius: 1, border: "1px solid #e0e0e0" }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>Action Required:</Typography>
                                     <Typography variant="body2" color="text.secondary">
-                                        • Contact inventory management to check stock availability
-                                        <br />
-                                        • Adjust order quantities to match available stock
-                                        <br />
+                                        • Contact inventory management to check stock availability<br />
+                                        • Adjust order quantities to match available stock<br />
                                         • Wait for stock replenishment before proceeding
                                     </Typography>
                                 </Box>
                             </>
                         ) : (
                             <Box sx={{ textAlign: "center", py: 3 }}>
-                                <Typography color="text.secondary">
-                                    No stock errors found.
-                                </Typography>
+                                <Typography color="text.secondary">No stock errors found.</Typography>
                             </Box>
                         )}
                     </DialogContent>
-
                     <DialogActions sx={{ px: 3, py: 2, borderTop: "1px solid #ddd" }}>
-                        <Button onClick={closeErrorsModel} variant="contained" color="primary">
-                            Close
-                        </Button>
+                        <Button onClick={closeErrorsModel} variant="contained" color="primary">Close</Button>
                     </DialogActions>
                 </Dialog>
             </>
         );
     }
 
-    // Only show main content if quotation details exist and shipping details are submitted
-    if (!quotationDetails) {
-        return null;
-    }
+    if (!quotationDetails) return null;
 
     return (
         <>
-            {/* Rest of your challan details JSX remains the same */}
-            <Grid
-                container
-                spacing={2}
-                alignItems="center"
-                justifyContent="space-between"
-                sx={{ mb: 2 }}
-            >
+            {/* Action Buttons — hidden on print */}
+            <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }} className="no-print">
                 <Grid>
                     <Typography variant="h6">Challan Details</Typography>
                 </Grid>
                 <Grid>
-                    <Button
-                        variant="contained"
-                        color="warning"
-                        startIcon={<AiOutlinePrinter />}
-                        onClick={handlePrint}
-                    >
+                    <Button variant="contained" color="warning" startIcon={<AiOutlinePrinter />} onClick={handlePrint}>
                         Print
                     </Button>
                 </Grid>
@@ -990,35 +678,48 @@ const Challan = () => {
 
             <Grid container spacing={1} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
                 <Grid size={12}>
-                    <div ref={contentRef} style={{ background: "#fff", padding: "20px" }}>
+                    <div ref={contentRef} className="print-container" style={{ background: "#fff", padding: "20px" }}>
                         <Card>
                             <CardContent>
-                                {/* Header Section */}
+
+                                {/* ── Logo (print only) ── */}
+                                <Box
+                                    className="print-logo"
+                                    sx={{ display: "none", justifyContent: "center", mb: 1, p: 0 }}
+                                >
+                                    {logoUrl && (
+                                        <img src={logoUrl} alt="Logo" style={{ height: "52px", objectFit: "contain", display: "block" }} />
+                                    )}
+                                </Box>
+
+                                {/* ── Header: Invoice No. | Logo (center, screen) | Dates ── */}
                                 <Grid size={12} sx={{ pt: 2 }}>
                                     <Box
+                                        className="challan-header-row"
                                         sx={{
                                             display: "flex",
                                             alignItems: "center",
                                             justifyContent: "space-between",
                                             gap: 2,
-                                            flexWrap: "wrap",
                                         }}
                                     >
-                                        <Typography variant="body1" sx={{ m: 0 }}>
+                                        {/* Left: Invoice No */}
+                                        <Typography variant="body1" sx={{ m: 0, flex: 1 }}>
                                             Invoice No. :{" "}
                                             <Box component="span" sx={{ fontWeight: 600 }}>
                                                 {quotationDetails.invoice_no || "N/A"}
                                             </Box>
                                         </Typography>
-                                        <Box
-                                            sx={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "end",
-                                                gap: 2,
-                                                flexWrap: "wrap",
-                                            }}
-                                        >
+
+                                        {/* Center: Logo (screen only) */}
+                                        {logoUrl && (
+                                            <Box className="no-print" sx={{ display: "flex", justifyContent: "center", flex: 1 }}>
+                                                <img src={logoUrl} alt="Logo" style={{ height: "52px", objectFit: "contain" }} />
+                                            </Box>
+                                        )}
+
+                                        {/* Right: Dates */}
+                                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 2, flex: 1, flexWrap: "wrap" }}>
                                             <Typography variant="body1" sx={{ m: 0 }}>
                                                 Billing Date:{" "}
                                                 <Box component="span" sx={{ fontWeight: 600 }}>
@@ -1035,7 +736,9 @@ const Challan = () => {
                                     </Box>
                                 </Grid>
 
+                                {/* ── From | To (center) | Shipping Address (right) ── */}
                                 <Box
+                                    className="from-to-section"
                                     sx={{
                                         display: "flex",
                                         justifyContent: "space-between",
@@ -1046,53 +749,49 @@ const Challan = () => {
                                         flexWrap: "wrap",
                                     }}
                                 >
-                                    <Box sx={{ width: { xs: "100%", md: "32%" } }}>
-                                        <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                                            From:
-                                        </Typography>
+                                    {/* From — left */}
+                                    <Box className="from-box" sx={{ width: { xs: "100%", md: "32%" } }}>
+                                        <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>From:</Typography>
                                         <Typography variant="body2">
-                                            <strong>{appDetails.application_name}</strong>
-                                            <br />
-                                            {appDetails.gst_no} <br />
+                                            <strong>{appDetails.application_name}</strong><br />
+                                            {appDetails.gst_no}<br />
                                             {appDetails.company_address}
                                         </Typography>
                                     </Box>
 
+                                    {/* To — center box, left-aligned text */}
                                     {quotationDetails.customer && (
-                                        <Box sx={{ width: { xs: "100%", md: "32%" } }}>
-                                            <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                                                To:
-                                            </Typography>
-                                            <Typography variant="body2">
-                                                <strong>{quotationDetails.customer.name}</strong>
-                                                <br />
-                                                {quotationDetails.customer.address}
-                                                <br />
-                                                {quotationDetails.customer.city},{" "}
-                                                {quotationDetails.customer.state?.name}{" "}
-                                                {quotationDetails.customer.zip_code}
-                                            </Typography>
+                                        <Box className="to-box" sx={{ width: { xs: "100%", md: "32%" }, display: "flex", justifyContent: "center" }}>
+                                            <Box>
+                                                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>To:</Typography>
+                                                <Typography variant="body2">
+                                                    <strong>{quotationDetails.customer.name}</strong><br />
+                                                    {quotationDetails.customer.address}<br />
+                                                    {quotationDetails.customer.city},{" "}
+                                                    {quotationDetails.customer.state?.name}{" "}
+                                                    {quotationDetails.customer.zip_code}
+                                                </Typography>
+                                            </Box>
                                         </Box>
                                     )}
 
+                                    {/* Shipping Address — right box, right-aligned text */}
                                     {quoteShippingAddress && (
-                                        <Box sx={{ width: { xs: "100%", md: "32%" } }}>
-                                            <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                                                Shipping Address:
-                                            </Typography>
+                                        <Box className="shipping-box" sx={{ width: { xs: "100%", md: "32%" }, display: "flex", justifyContent: "center" }}>
+                                           <Box>
+                                             <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>Shipping Address:</Typography>
                                             <Typography variant="body2">
-                                                <strong>{quoteShippingAddress.name}</strong>
-                                                <br />
-                                                {quoteShippingAddress.address}
-                                                <br />
+                                                <strong>{quoteShippingAddress.name}</strong><br />
+                                                {quoteShippingAddress.address}<br />
                                                 {quoteShippingAddress.city}, {quoteShippingAddress.state}{" "}
                                                 {quoteShippingAddress.zip_code}
                                             </Typography>
+                                           </Box>
                                         </Box>
                                     )}
                                 </Box>
 
-                                {/* Items Table */}
+                                {/* ── Items Table ── */}
                                 {items.length > 0 && (
                                     <Box sx={{ mb: 3 }}>
                                         <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
@@ -1117,24 +816,24 @@ const Challan = () => {
                                                         <Td>{item.product?.size}</Td>
                                                         <Td>
                                                             {item.product?.image ? (
-                                                                <Box
-                                                                    sx={{
-                                                                        display: "flex",
-                                                                        alignItems: "center",
-                                                                        gap: 1,
-                                                                    }}
-                                                                >
-                                                                    <ImagePreviewDialog
-                                                                        imageUrl={mediaUrl + item.product?.image}
+                                                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                                                    {/* Screen */}
+                                                                    <Box className="no-print">
+                                                                        <ImagePreviewDialog
+                                                                            imageUrl={mediaUrl + item.product?.image}
+                                                                            alt={item.product?.name || "Document"}
+                                                                        />
+                                                                    </Box>
+                                                                    {/* Print */}
+                                                                    <img
+                                                                        className="print-product-img"
+                                                                        src={mediaUrl + item.product?.image}
                                                                         alt={item.product?.name || "Document"}
+                                                                        style={{ display: "none", width: 36, height: 36, objectFit: "cover" }}
                                                                     />
-                                                                    <Typography variant="caption">
-                                                                        {item.product?.name || "Document"}
-                                                                    </Typography>
+                                                                    <Typography variant="caption">{item.product?.name || "Document"}</Typography>
                                                                 </Box>
-                                                            ) : (
-                                                                "-"
-                                                            )}
+                                                            ) : "-"}
                                                         </Td>
                                                     </Tr>
                                                 ))}
@@ -1143,27 +842,27 @@ const Challan = () => {
                                     </Box>
                                 )}
 
-                                {/* Order Terms */}
+                                {/* ── Order Terms ── */}
                                 <Grid size={12} sx={{ mt: 3 }}>
-                                    <Box
-                                        sx={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            width: "100%",
-                                            gap: 2,
-                                            flexWrap: "wrap",
-                                        }}
-                                    >
-                                        <Box sx={{ width: "48%", minWidth: "300px" }}>
-                                            <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                                                Order Terms:
-                                            </Typography>
-                                            <Typography variant="body2">
+                                    <Box sx={{ display: "flex", justifyContent: "space-between", width: "100%", gap: 2, flexWrap: "wrap" }}>
+                                        <Box className="order-terms-box" sx={{ width: "48%", minWidth: "300px" }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>Order Terms:</Typography>
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    padding: "8px",
+                                                    border: "1px solid #ccc",
+                                                    borderRadius: "4px",
+                                                    minHeight: "80px",
+                                                    whiteSpace: "pre-wrap",
+                                                }}
+                                            >
                                                 {quotationDetails.term_and_condition || "No order terms specified"}
                                             </Typography>
                                         </Box>
                                     </Box>
                                 </Grid>
+
                             </CardContent>
                         </Card>
                     </div>

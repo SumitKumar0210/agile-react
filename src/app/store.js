@@ -49,6 +49,7 @@ import ccsComparisonReducer from '../pages/CCS/slice/ccsComparisonSlice';
 import ccsSheetReducer from '../pages/CCS/slice/ccsSheetSlice';
 import logReducer from '../pages/Logs/slice/logSlice';
 import inventoryReducer from '../pages/Vendor/Material/slice/inventorySlice';
+import subDepartmentReducer from '../pages/settings/slices/subDepartmentSlice';
 
 export const store = configureStore({
     reducer: {
@@ -102,5 +103,6 @@ export const store = configureStore({
         ccsSheet: ccsSheetReducer,
         log: logReducer,
         inventory: inventoryReducer,
+        subDepartment: subDepartmentReducer,
     }
 })

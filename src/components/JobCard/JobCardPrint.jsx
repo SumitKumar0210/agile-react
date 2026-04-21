@@ -90,7 +90,7 @@ const LabelValue = ({ label, value, sx = {} }) => (
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const jobData = {
-    company: "AARISH PLY",
+    company: "Agile",
     subtitle: "Factory Management System",
     shop: "CARPENTRY",
     jobCode: "JC-0847-CAR",
@@ -169,6 +169,8 @@ const PrintableJobCard = React.forwardRef((props, ref) => {
     const department = product.department || [];
     const [jobDetails, setJobDetails] = useState(null);
     const dispatch = useDispatch();
+    const logo = localStorage.getItem("logo")??'';
+    const companyName = localStorage.getItem("application_name")??'';
     useEffect(() => {
 
         const fetchJobDetails = async () => {
@@ -238,7 +240,7 @@ const PrintableJobCard = React.forwardRef((props, ref) => {
                     >
                         <Box
                             component="img"
-                            src={Logo}  // 👈 replace with your logo path
+                            src={logo ?? Logo}  // 👈 replace with your logo path
                             alt="Company Logo"
                             sx={{
                                 width: "80%",
@@ -257,7 +259,7 @@ const PrintableJobCard = React.forwardRef((props, ref) => {
                                 letterSpacing: "0.04em"
                             }}
                         >
-                            {data.company}
+                            {companyName ?? data.company}
                         </Typography>
 
                         <Typography sx={{ fontSize: "12px", color: "#444" }}>
@@ -632,6 +634,7 @@ export default function JobCardPrint() {
 
     const location = useLocation();
     const data = location.state;
+    
 
     // react-to-print v3 uses contentRef; v2 uses content: () => ref.current
     // Both are provided for compatibility

@@ -148,7 +148,7 @@ export default function Production() {
         disableGutters
         sx={{
           maxWidth: "100% !important",
-          overflowX: "hidden",
+          // overflowX: "hidden",
           marginBottom: 3,
         }}
       >
@@ -161,7 +161,7 @@ export default function Production() {
             alignItems: "center",
           }}
         >
-          <Typography variant="h6">Production</Typography>
+          {/* <Typography variant="h6" className="page-title">Production</Typography> */}
           {isRefreshing && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <CircularProgress size={20} />
@@ -211,7 +211,7 @@ export default function Production() {
             >
               <CardContent sx={{ p: 2 }}>
                 <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
-                  Navigation
+                  Production
                 </Typography>
                 <NavigationMenu />
               </CardContent>
@@ -224,6 +224,8 @@ export default function Production() {
               flex: 1,
               height: isMobile ? "auto !important" : "100%",
               boxSizing: "border-box",
+              overflow: "hidden",    // ✅ KEY — makes this the scroll container boundary
+              minWidth: 0,           // ✅ prevents flex child from overflowing
             }}
           >
             {activeBatch ? (
@@ -235,7 +237,7 @@ export default function Production() {
                   border: "none",
                 }}
               >
-                <CardContent sx={{ p: 1 }}>
+                <CardContent sx={{ p: 1, height: "100%", overflow: "hidden" }}>
                   {/* Batch Info - Enhanced with hover effect */}
                   <Box
                     sx={{
@@ -243,11 +245,11 @@ export default function Production() {
                       p: 2,
                       backgroundColor: "white",
                       borderRadius: 1,
-                      boxShadow: 1,
-                      transition: "box-shadow 0.2s ease-in-out",
-                      "&:hover": {
-                        boxShadow: 2,
-                      },
+                      // boxShadow: 1,
+                      // transition: "box-shadow 0.2s ease-in-out",
+                      // "&:hover": {
+                      //   boxShadow: 0.5,
+                      // },
                     }}
                   >
                     <Typography variant="h6" fontWeight={600}>
@@ -279,12 +281,10 @@ export default function Production() {
                       flexWrap: "nowrap", // ❗ forces single row
                       gap: 2,
                       overflowX: "auto",
-                      pb: 2,
-
+                      pb: 0,
                       scrollBehavior: "smooth",
-
                       "&::-webkit-scrollbar": {
-                        height: 8,
+                        height: 4,
                       },
                       "&::-webkit-scrollbar-track": {
                         backgroundColor: "rgba(0,0,0,0.05)",
@@ -327,9 +327,9 @@ export default function Production() {
                                 p: 2,
                                 borderRadius: 1,
                                 mb: 2,
-                                boxShadow: 1,
-                                transition: "0.2s",
-                                "&:hover": { boxShadow: 2 },
+                                // boxShadow: 1,
+                                // transition: "0.2s",
+                                // "&:hover": { boxShadow: 2 },
                               }}
                             >
                               <Chip
@@ -382,7 +382,7 @@ export default function Production() {
                         })}
 
                     {/* Add Department Button */}
-                    <Box sx={{ flex: "0 0 auto" }}>
+                    {/* <Box sx={{ flex: "0 0 auto" }}>
                       <Tooltip title="Add Department" arrow>
                         <IconButton
                           onClick={() => setOpenDepartmentDialog(true)}
@@ -400,7 +400,7 @@ export default function Production() {
                           <IoMdAdd size={24} />
                         </IconButton>
                       </Tooltip>
-                    </Box>
+                    </Box> */}
                   </Box>
                 </CardContent>
               </Card>
@@ -416,7 +416,7 @@ export default function Production() {
                   backgroundColor: "white",
                   borderRadius: 1,
                   p: 3,
-                  boxShadow: 1,
+                  // boxShadow: 1,
                 }}
               >
                 <Typography variant="h6" color="text.secondary" gutterBottom>

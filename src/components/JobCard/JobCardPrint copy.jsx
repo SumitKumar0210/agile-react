@@ -88,7 +88,7 @@ const LabelValue = ({ label, value, sx = {} }) => (
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const jobData = {
-  company: "AARISH PLY",
+  company: "AGLIE",
   subtitle: "Factory Management System",
   shop: "CARPENTRY",
   jobCode: "JC-0847-CAR",
