@@ -59,7 +59,7 @@ const CostSheet = () => {
     const materialTotal = useMemo(
         () =>
             materiesGrouped.reduce((total, [, items]) =>
-                total + items.reduce((sum, r) => sum + (r.qty ?? 0) * (r.material?.price ?? 0), 0),
+                total + items.reduce((sum, r) => sum + (r.qty ?? 0) * (r.material?.price || r.semi_furnished_product?.unit_price || 0), 0),
                 0
             ),
         [materiesGrouped]
@@ -171,7 +171,7 @@ const CostSheet = () => {
                                         {/* One table per group */}
                                         {materiesGrouped.map(([groupName, items]) => {
                                             const groupTotal = items.reduce(
-                                                (sum, r) => sum + (r.qty ?? 0) * (r.material?.price ?? 0), 0
+                                                (sum, r) => sum + (r.qty ?? 0) * (r.material?.price || r.semi_furnished_product?.unit_price || 0), 0
                                             );
                                             return (
                                                 <table key={groupName} style={{ ...tableStyle, marginTop: 10 }}>
@@ -186,12 +186,12 @@ const CostSheet = () => {
                                                     </thead>
                                                     <tbody>
                                                         {items.map((r, i) => {
-                                                            const amount = (r.qty ?? 0) * (r.material?.price ?? 0);
+                                                            const amount = (r.qty ?? 0) * (r.material?.price || r.semi_furnished_product?.unit_price || 0);
                                                             return (
                                                                 <tr key={i}>
-                                                                    <td style={tdStyle}>{r.material?.name}</td>
+                                                                    <td style={tdStyle}>{r.material?.name || r.semi_furnished_product?.name || "—"}</td>
                                                                     <td style={{ ...tdStyle, textAlign: "right" }}>{r.qty}</td>
-                                                                    <td style={{ ...tdStyle, textAlign: "right" }}>{r.material?.price}</td>
+                                                                    <td style={{ ...tdStyle, textAlign: "right" }}>{r.material?.price || r.semi_furnished_product?.unit_price || 0}</td>
                                                                     <td style={{ ...tdStyle, textAlign: "right" }}>{Number(amount).toFixed(2)}</td>
                                                                 </tr>
                                                             );

@@ -191,7 +191,7 @@ const PrintableJobCard = React.forwardRef((props, ref) => {
 
     const tentative_items = jobDetails?.tentiveItems || [];;
 
-    console.log("this is job details:", product);
+    // console.log("this is job details:", product);
     return (
         <Box
             ref={ref}

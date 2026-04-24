@@ -236,7 +236,7 @@ const SubDepartment = () => {
     const baseColumns = [
       {
         accessorKey: "name",
-        header: "Sub-Department",
+        header: "Sub-Process",
         Cell: ({ cell }) =>
           loading ? <Skeleton variant="text" width="80%" /> : cell.getValue(),
       },
@@ -477,7 +477,7 @@ const SubDepartment = () => {
                       </IconButton>
                     </Tooltip>
                     <Typography variant="h6" className="page-title">
-                      Sub-Departments
+                      Sub-Processes
                     </Typography>
                     {parentDepartment && (
                       <Chip
@@ -513,7 +513,7 @@ const SubDepartment = () => {
                         startIcon={<AddIcon />}
                         onClick={handleOpen}
                       >
-                        Add Sub-Department
+                        Add Sub-Process
                       </Button>
                     )}
                   </Box>

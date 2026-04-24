@@ -448,7 +448,7 @@ const ProductRequest = () => {
                     <TableCell>
                       <Avatar
                         src={request.material?.image ? mediaUrl + request.material.image : ""}
-                        alt={request.material?.name}
+                        alt={request.material?.name ?? request.semi_furnished_product?.name}
                         variant="rounded"
                         sx={{ width: 40, height: 40 }}
                       >
@@ -457,7 +457,7 @@ const ProductRequest = () => {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" fontWeight={500}>
-                        {request.material?.name || "—"}
+                        {request.material?.name || request.semi_furnished_product?.name || "—"}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {request.material?.remark || ""}
@@ -475,10 +475,10 @@ const ProductRequest = () => {
                     <TableCell align="right">
                
                       <Chip
-                        label={request.material?.available_qty || 0}
+                        label={request.material?.available_qty || request.semi_furnished_product?.qty || 0}
                         size="small"
                         color={
-                          (request.material?.available_qty || 0) >= request.qty
+                          (request.material?.available_qty || request.semi_furnished_product?.qty || 0) >= request.qty
                             ? "success"
                             : "error"
                         }

@@ -50,6 +50,8 @@ import ccsSheetReducer from '../pages/CCS/slice/ccsSheetSlice';
 import logReducer from '../pages/Logs/slice/logSlice';
 import inventoryReducer from '../pages/Vendor/Material/slice/inventorySlice';
 import subDepartmentReducer from '../pages/settings/slices/subDepartmentSlice';
+import semiFurnishedProductReducer from '../pages/Production/SemiFurnishProduct/semiFurnishedProductSlice';
+import dashboardReducer from '../pages/dashboard/dashboardSlice';
 
 export const store = configureStore({
     reducer: {
@@ -104,5 +106,8 @@ export const store = configureStore({
         log: logReducer,
         inventory: inventoryReducer,
         subDepartment: subDepartmentReducer,
+        semiFurnishedProduct: semiFurnishedProductReducer,
+        dashboard: dashboardReducer,
+
     }
 })

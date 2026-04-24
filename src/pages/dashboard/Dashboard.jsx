@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Grid,
@@ -22,45 +22,76 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import {
+  productionOutput, topVendorChart, qcTrendsData,
+  dispatchTrackerData, activeProductionDataDepartmentWise,
+  materialSummary,getStatisticsData,
+} from "./dashboardSlice";
+import { useDispatch, useSelector } from "react-redux";
+
+
+
 
 export default function Dashboard() {
-  const [loading, setLoading] = React.useState(true);
+  // const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
 
-  // Simulate loading state
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
+  const {
+    productionOutputData: productionData = [],
+    loadingProductionOutput: loading,
+    topVendorChartData: machineData = [],
+    loadingTopVendorChart,
+    qcTrendsData: qcData = [],
+    loadingQcTrends,
+    dispatchTrackerData: dispatchData = [],
+    loadingDispatchTracker,
+    activeDepartmentData: activeData = [],
+    loadingActiveDepartment,
+    materialSummary: materialSummaryData = [],
+    loadingMaterialSummary,
+    statisticsData,
+    loadingStatisticsData,
+  } = useSelector((s) => s.dashboard);
+  console.log(materialSummaryData);
 
-  const productionData = [
-    { time: "00:00", output: 150 },
-    { time: "04:00", output: 200 },
-    { time: "08:00", output: 320 },
-    { time: "12:00", output: 410 },
-    { time: "16:00", output: 390 },
-    { time: "20:00", output: 340 },
-    { time: "24:00", output: 280 },
-  ];
+  useEffect(() => {
+    dispatch(productionOutput());
+    dispatch(topVendorChart());
+    dispatch(qcTrendsData());
+    dispatch(activeProductionDataDepartmentWise());
+    dispatch(dispatchTrackerData());
+    dispatch(materialSummary());
+    dispatch(getStatisticsData());
+  }, [dispatch]);
+  // setLoading(false)
 
-  const machineData = [
-    { name: "Machine A", value: 92 },
-    { name: "Machine B", value: 85 },
-    { name: "Machine C", value: 78 },
-    { name: "Machine D", value: 88 },
-  ];
+  // const productionData = [
+  //   { time: "jan", output: 150 },
+  //   { time: "feb", output: 200 },
+  //   { time: "Mar", output: 320 },
+  //   { time: "Apr", output: 410 },
+  //   { time: "May", output: 390 },
+  //   { time: "Jun", output: 340 },
+  //   { time: "Jul", output: 280 },
+  // ];
 
-  const qcData = [
-    { name: "Pass", value: 985, color: "#10b981" },
-    { name: "Fail", value: 15, color: "#ef4444" },
-  ];
+  // const machineData = [
+  //   { name: "Machine A", value: 92 },
+  //   { name: "Machine B", value: 85 },
+  //   { name: "Machine C", value: 78 },
+  //   { name: "Machine D", value: 88 },
+  // ];
 
-  const dispatchData = [
-    { status: "Pending", count: 45, color: "#f59e0b" },
-    { status: "In Transit", count: 32, color: "#3b82f6" },
-    { status: "Delivered", count: 118, color: "#10b981" },
-  ];
+  // const qcData = [
+  //   { name: "Pass", value: 985, color: "#10b981" },
+  //   { name: "Fail", value: 15, color: "#ef4444" },
+  // ];
+
+  // const dispatchData = [
+  //   { status: "Pending", count: 45, color: "#f59e0b" },
+  //   { status: "In Transit", count: 32, color: "#3b82f6" },
+  //   { status: "Delivered", count: 118, color: "#10b981" },
+  // ];
 
   const kpis = [
     { title: "Production", value: "2,340 Units", color: "#3b82f6" },
@@ -88,11 +119,11 @@ export default function Dashboard() {
   // Skeleton for charts
   const ChartSkeleton = ({ height = 250 }) => (
     <Box sx={{ width: '100%', height }}>
-      <Skeleton 
-        variant="rectangular" 
-        width="100%" 
-        height={height} 
-        sx={{ borderRadius: 1, bgcolor: '#4b5563' }} 
+      <Skeleton
+        variant="rectangular"
+        width="100%"
+        height={height}
+        sx={{ borderRadius: 1, bgcolor: '#4b5563' }}
       />
     </Box>
   );
@@ -127,14 +158,52 @@ export default function Dashboard() {
             </Grid>
           ))
         ) : (
-          kpis.map((k, i) => (
-            <Grid size={2} key={i}>
-              <Paper sx={{ p: 2, textAlign: "center", bgcolor: k.color, height: "100%" }}>
-                <Typography color="white" fontSize={14}>{k.title}</Typography>
-                <Typography color="white" fontSize={18} fontWeight={500}>{k.value}</Typography>
+          <>
+            <Grid size={2}>
+              <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#3b82f6", height: "100%" }}>
+                <Typography color="white" fontSize={14}>Active Production</Typography>
+                <Typography color="white" fontSize={18} fontWeight={500}>{statisticsData?.activeProduction ?? 0}</Typography>
               </Paper>
             </Grid>
-          ))
+            <Grid size={2}>
+              <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#22c55e", height: "100%" }}>
+                <Typography color="white" fontSize={14}>Ready For Delivery</Typography>
+                <Typography color="white" fontSize={18} fontWeight={500}>{statisticsData?.readyProduct ?? 0}</Typography>
+              </Paper>
+            </Grid>
+            <Grid size={2}>
+              <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#059669", height: "100%" }}>
+                <Typography color="white" fontSize={14}>Semi Furnished</Typography>
+                <Typography color="white" fontSize={18} fontWeight={500}>{statisticsData?.semiFurnished ?? 0}</Typography>
+              </Paper>
+            </Grid>
+            <Grid size={2}>
+              <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#a855f7", height: "100%" }}>
+                <Typography color="white" fontSize={14}>Orders</Typography>
+                <Typography color="white" fontSize={18} fontWeight={500}>{statisticsData?.orders ?? 0}</Typography>
+              </Paper>
+            </Grid>
+            <Grid size={2}>
+              <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#ef4444", height: "100%" }}>
+                <Typography color="white" fontSize={14}>Vendors Due Amount</Typography>
+                <Typography color="white" fontSize={18} fontWeight={500}>₹{statisticsData?.vendorDueAmount ?? 0}</Typography>
+              </Paper>
+            </Grid>
+            <Grid size={2}>
+              <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#f59e0b", height: "100%" }}>
+                <Typography color="white" fontSize={14}>Billing Amount</Typography>
+                <Typography color="white" fontSize={18} fontWeight={500}>₹{statisticsData?.billingAmount ?? 0}</Typography>
+              </Paper>
+            </Grid>
+         </>
+          // kpis.map((k, i) => (
+          //   <Grid size={2} key={i}>
+          //     <Paper sx={{ p: 2, textAlign: "center", bgcolor: k.color, height: "100%" }}>
+          //       <Typography color="white" fontSize={14}>{k.title}</Typography>
+          //       <Typography color="white" fontSize={18} fontWeight={500}>{k.value}</Typography>
+          //     </Paper>
+          //   </Grid>
+          // ))
         )}
       </Grid>
 
@@ -156,8 +225,8 @@ export default function Dashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="time" stroke="#cbd5e1" fontSize={14}/>
-                  <YAxis stroke="#cbd5e1" fontSize={14}/>
+                  <XAxis dataKey="time" stroke="#cbd5e1" fontSize={14} />
+                  <YAxis stroke="#cbd5e1" fontSize={14} />
                   <Tooltip contentStyle={{ background: "#fcfcfc", border: "none" }} />
                   <Area dataKey="output" stroke="#3b82f6" fill="url(#prod)" />
                 </AreaChart>
@@ -169,7 +238,7 @@ export default function Dashboard() {
         {/* MACHINE UTILIZATION */}
         <Grid size={3}>
           <Paper sx={{ p: 2, bgcolor: "#374153", height: "100%" }}>
-            <Typography color="white" mb={2}>Machine Utilization</Typography>
+            <Typography color="white" mb={2}>Top Vendor</Typography>
             {loading ? (
               <ChartSkeleton height={250} />
             ) : (
@@ -202,8 +271,29 @@ export default function Dashboard() {
                     <Tooltip contentStyle={{ background: "#fcfcfc", border: "none" }} />
                   </PieChart>
                 </ResponsiveContainer>
-                <Typography color="white" fontSize={12}>Pass: 985 (98.5%)</Typography>
-                <Typography color="white" fontSize={12}>Fail: 15 (1.5%)</Typography>
+
+                {(() => {
+                  const total = qcData.reduce((sum, item) => sum + (item.value || 0), 0);
+                  return qcData.map((item, i) => {
+                    const percent = total > 0 ? ((item.value / total) * 100).toFixed(1) : "0.0";
+                    return (
+                      <Typography key={i} color="white" fontSize={12} mt={0.5}>
+                        <Box
+                          component="span"
+                          sx={{
+                            display: "inline-block",
+                            width: 10,
+                            height: 10,
+                            borderRadius: "50%",
+                            bgcolor: item.color,
+                            mr: 1,
+                          }}
+                        />
+                        {item.name}: {item.value} ({percent}%)
+                      </Typography>
+                    );
+                  });
+                })()}
               </>
             )}
           </Paper>
@@ -212,27 +302,6 @@ export default function Dashboard() {
 
       {/* ROW 2 */}
       <Grid container spacing={2} mt={2}>
-        {/* RAW MATERIAL */}
-        <Grid size={4}>
-          <Paper sx={{ p: 2, bgcolor: "#374153", height: "100%" }}>
-            <Typography color="white" fontWeight={500} mb={2}>Raw Materials</Typography>
-            {loading ? (
-              Array(3).fill(0).map((_, index) => (
-                <RawMaterialSkeleton key={`material-skeleton-${index}`} />
-              ))
-            ) : (
-              rawMaterials.map((m, i) => (
-                <Box key={i} display="flex" justifyContent="space-between" mb={1}>
-                  <Box>
-                    <Typography color="white">{m.name}</Typography>
-                    <Typography fontSize={12} color="gray">{m.stock} {m.unit}</Typography>
-                  </Box>
-                  <Chip label={m.status} color={m.status === "low" ? "error" : "success"} />
-                </Box>
-              ))
-            )}
-          </Paper>
-        </Grid>
 
         {/* DISPATCH */}
         <Grid size={4}>
@@ -268,10 +337,32 @@ export default function Dashboard() {
           </Paper>
         </Grid>
 
-        {/* ATTENDANCE */}
+        {/* RAW MATERIAL */}
+        {/* <Grid size={4}>
+          <Paper sx={{ p: 2, bgcolor: "#374153", height: "100%" }}>
+            <Typography color="white" fontWeight={500} mb={2}>Raw Materials</Typography>
+            {loading ? (
+              Array(3).fill(0).map((_, index) => (
+                <RawMaterialSkeleton key={`material-skeleton-${index}`} />
+              ))
+            ) : (
+              rawMaterials.map((m, i) => (
+                <Box key={i} display="flex" justifyContent="space-between" mb={1}>
+                  <Box>
+                    <Typography color="white">{m.name}</Typography>
+                    <Typography fontSize={12} color="gray">{m.stock} {m.unit}</Typography>
+                  </Box>
+                  <Chip label={m.status} color={m.status === "low" ? "error" : "success"} />
+                </Box>
+              ))
+            )}
+          </Paper>
+        </Grid> */}
+
+        {/* MATERIAL SUMMARY */}
         <Grid size={4}>
           <Paper sx={{ p: 2, bgcolor: "#374153", height: "100%" }}>
-            <Typography color="white" fontWeight={500}>Attendance</Typography>
+            <Typography color="white" fontWeight={500}>Material Summary</Typography>
             {loading ? (
               <>
                 <Skeleton variant="text" width="40%" height={40} sx={{ bgcolor: '#4b5563', mb: 1 }} />
@@ -281,14 +372,130 @@ export default function Dashboard() {
               </>
             ) : (
               <>
-                <Typography color="success.main" fontSize={30}>96.4%</Typography>
-                <LinearProgress variant="determinate" value={96.4} sx={{ height: 10, borderRadius: 5, mb: 2 }} />
-                <Typography color="white" fontSize={13}>Total Staff: 140</Typography>
-                <Typography color="white" fontSize={13}>Absent: 5</Typography>
+                <Typography color="success.main" fontSize={30}>
+                  {materialSummaryData?.availability_percent ?? 0}%
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={materialSummaryData?.availability_percent ?? 0}
+                  sx={{ height: 10, borderRadius: 5, mb: 2 }}
+                />
+                <Typography color="white" fontSize={13}>
+                  Total Requested Materials: {materialSummaryData?.total_materials ?? 0}
+                </Typography>
+                <Typography color="white" fontSize={13}>
+                  Available: {materialSummaryData?.available_materials ?? 0}
+                </Typography>
+                <Typography color="white" fontSize={13}>
+                  Unavailable: {materialSummaryData?.unavailable_materials ?? 0}
+                </Typography>
               </>
             )}
           </Paper>
         </Grid>
+
+        {/* ACTIVE PRODUCTION */}
+        <Grid size={4}>
+          <Paper sx={{ p: 2, bgcolor: "#374153", height: "100%" }}>
+            <Typography color="white" fontWeight={500}>Active Production</Typography>
+            {loading ? (
+              <>
+                <ChartSkeleton height={150} />
+                <Box mt={2}>
+                  {Array(6).fill(0).map((_, index) => (
+                    <DispatchItemSkeleton key={`active-skeleton-${index}`} />
+                  ))}
+                </Box>
+              </>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={150}>
+                  <BarChart data={activeData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis
+                      dataKey="name"
+                      stroke="#cbd5e1"
+                      tick={{ fontSize: 11 }}
+                      // Only label every other bar when there are many departments
+                      interval={activeData.length > 5 ? 1 : 0}
+                    />
+                    <YAxis stroke="#cbd5e1" allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{ background: "#1e293b", border: "none", borderRadius: 6 }}
+                      labelStyle={{ color: "#fff" }}
+                      itemStyle={{ color: "#cbd5e1" }}
+                    />
+                    <Bar dataKey="count" fill="#6366f1" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+
+                {/* ── Legend: split into left and right columns dynamically ── */}
+                {(() => {
+                  const half = Math.ceil(activeData.length / 2); // ceil handles odd counts
+                  const left = activeData.slice(0, half);
+                  const right = activeData.slice(half);
+
+                  return (
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: "2px 8px",
+                        mt: 1.5,
+                      }}
+                    >
+                      {/* Left column */}
+                      <Box>
+                        {left.map((d, i) => (
+                          <Typography
+                            key={`left-${i}`}
+                            color="white"
+                            fontSize={11}
+                            sx={{ mt: 0.5, display: "flex", alignItems: "center", gap: 0.5 }}
+                          >
+                            <Box
+                              component="span"
+                              sx={{
+                                width: 8, height: 8, borderRadius: "50%",
+                                backgroundColor: "#6366f1",
+                                display: "inline-block", flexShrink: 0,
+                              }}
+                            />
+                            {d.name}: {d.count}
+                          </Typography>
+                        ))}
+                      </Box>
+
+                      {/* Right column */}
+                      <Box>
+                        {right.map((d, i) => (
+                          <Typography
+                            key={`right-${i}`}
+                            color="white"
+                            fontSize={11}
+                            sx={{ mt: 0.5, display: "flex", alignItems: "center", gap: 0.5 }}
+                          >
+                            <Box
+                              component="span"
+                              sx={{
+                                width: 8, height: 8, borderRadius: "50%",
+                                backgroundColor: "#6366f1",
+                                display: "inline-block", flexShrink: 0,
+                              }}
+                            />
+                            {d.name}: {d.count}
+                          </Typography>
+                        ))}
+                      </Box>
+                    </Box>
+                  );
+                })()}
+              </>
+            )}
+          </Paper>
+        </Grid>
+
+
       </Grid>
     </Box>
   );

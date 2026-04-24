@@ -100,6 +100,12 @@ const menuSections = [
           {
             text: "Inventory", to: "/material-inventory", icon: <BsBoxSeam />, anyPermissions: ["product_stocks.read"]
           },
+          {
+            text: "Semi-Furnished Product Inventory", to: "/production/semi-furnished-product-stocks", icon: <BsBoxSeam />, anyPermissions: ["product_stocks.read"]
+          },
+          {
+            text: "Semi-Furnished Product", to: "/production/semi-furnished-products", icon: <BsBoxSeam />, anyPermissions: ["product_stocks.read"]
+          },
         ],
       },
       {

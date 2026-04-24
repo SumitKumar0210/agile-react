@@ -27,6 +27,7 @@ import {
   Paper,
   TextField,
 } from "@mui/material";
+import { MdPendingActions } from "react-icons/md";
 import { styled } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
 import { TbTruckDelivery } from "react-icons/tb";
@@ -50,6 +51,9 @@ import { useAuth } from "../../context/AuthContext";
 import { fetchLabourLogs } from "../../pages/Production/slice/labourLogSlice";
 import { forEach } from "lodash";
 import JobCardDrawer from "../JobCard/JobCard";
+import { semiFurnishedProductRRP, markSemiFurnishedProduct } from "../../pages/Production/SemiFurnishProduct/semiFurnishedProductSlice";
+import SemiFinishedRRPModal from "../../components/Production/SemiFinishedRRPModal";
+
 
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -248,7 +252,6 @@ export default function ProductDetailsModal({
   const { data: materialData = [] } = useSelector((state) => state.material);
   const { bomDetails = [] } = useSelector((state) => state.productionChain);
 
-console.log("bomDetails" + bomDetails);
   const [message, setMessage] = useState("");
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
@@ -260,6 +263,13 @@ console.log("bomDetails" + bomDetails);
   const [openFailQcDialog, setOpenFailQcDialog] = useState(false);
   const [submittingReady, setSubmittingReady] = useState(false);
 
+  const [openSemiReadyDialog, setOpenSemiReadyDialog] = useState(false);
+  const [submittingSemiReady, setSubmittingSemiReady] = useState(false);
+
+  const [rrpData, setRrpData] = useState(null);
+  const [openRRPModal, setOpenRRPModal] = useState(false);
+  const [savingRRP, setSavingRRP] = useState(false);
+
   // Initialize local state when product changes
   useEffect(() => {
     if (product) {
@@ -268,7 +278,7 @@ console.log("bomDetails" + bomDetails);
       setLocalMessages(product.messages || []);
       dispatch(fetchLabourLogs(product.id));
       const res = dispatch(getBomDetailsWithApprovedQty(product.id));
- 
+
     }
   }, [product]);
 
@@ -346,6 +356,46 @@ console.log("bomDetails" + bomDetails);
       setSubmittingReady(false);
     }
   };
+  const handleSemiReadyProduct = async () => {
+    if (!product?.id) return;
+
+    setSubmittingSemiReady(true);
+    try {
+      const res = await dispatch(semiFurnishedProductRRP(product.id));
+
+      if (!res.error && res.payload) {
+        // Close the confirm dialog
+        setOpenSemiReadyDialog(false);
+        // Store the API response and open the RRP details modal
+        setRrpData(res.payload);
+        setOpenRRPModal(true);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Failed to calculate RRP. Please try again.");
+    } finally {
+      setSubmittingSemiReady(false);
+    }
+  };
+
+  const handleSaveRRP = async (overrides) => {
+    // overrides = { overhead, gross_profit_pct, gross_profit_amount, total }
+    setSavingRRP(true);
+    try {
+      // TODO: dispatch your save/update RRP action here, e.g.:
+      await dispatch(markSemiFurnishedProduct({ pp_id: product.id, ...overrides }));
+
+      setOpenRRPModal(false);
+      setRrpData(null);
+      onClose?.();
+      onRefresh?.();
+    } catch (error) {
+      console.error("RRP save error:", error);
+      alert("Failed to save RRP. Please try again.");
+    } finally {
+      setSavingRRP(false);
+    }
+  };
 
   const handleFailQc = async (reason) => {
     if (!product?.id) return;
@@ -414,7 +464,7 @@ console.log("bomDetails" + bomDetails);
     ? departments.find((d) => d.id === product.department_id)
     : null;
 
-    const enrichedProduct = currentDepartment
+  const enrichedProduct = currentDepartment
     ? { ...product, department: currentDepartment }
     : product;
 
@@ -464,7 +514,7 @@ console.log("bomDetails" + bomDetails);
               variant="contained"
               size="small"
               color="secondary"
-               onClick={() => setOpenJobCard(true)}
+              onClick={() => setOpenJobCard(true)}
               sx={{ mt: 0, mr: 2, display: loading ? "none" : "block" }}
             >
               Job Card
@@ -515,14 +565,24 @@ console.log("bomDetails" + bomDetails);
 
 
                 {(hasPermission("productions.ready_for_delivery") && currentDepartment?.id == '8') && (
-                  <Button
-                    variant="outlined"
-                    startIcon={<TbTruckDelivery />}
-                    color="warning"
-                    onClick={() => setOpenReadyDialog(true)}
-                  >
-                    Ready For Delivery
-                  </Button>
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<MdPendingActions />}
+                      color="warning"
+                      onClick={() => setOpenSemiReadyDialog(true)}
+                    >
+                      Mark Semi-Finished
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<TbTruckDelivery />}
+                      color="warning"
+                      onClick={() => setOpenReadyDialog(true)}
+                    >
+                      Ready For Delivery
+                    </Button>
+                  </Box>
                 )}
 
               </Box>
@@ -894,12 +954,111 @@ console.log("bomDetails" + bomDetails);
           </Button>
         </DialogActions>
       </Dialog>
+      <Dialog
+        open={openSemiReadyDialog}
+        onClose={() => !submittingSemiReady && setOpenSemiReadyDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <MdWarning size={28} color="#ed6c02" />
+            <Typography variant="h6">Confirm Mark as Semi-Ready</Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent dividers>
+          <DialogContentText sx={{ mb: 2 }}>
+            Are you sure you want to mark this product as <strong>Semi-Ready</strong>?
+          </DialogContentText>
+
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <strong>Important:</strong> This action cannot be undone. Once marked as ready,
+            this product will be moved to the delivery queue.
+          </Alert>
+
+          <Box sx={{ p: 2, bgcolor: "grey.50", borderRadius: 1 }}>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              Product Details:
+            </Typography>
+            <Typography variant="body2">
+              <strong>Item:</strong> {product?.item_name}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Group:</strong> {product?.group?.trim()}
+            </Typography>
+            {product?.start_date && (
+              <Typography variant="body2">
+                <strong>Start Date:</strong> {product.start_date}
+              </Typography>
+            )}
+            {product?.delivery_date && (
+              <Typography variant="body2">
+                <strong>Delivery Date:</strong> {product.delivery_date}
+              </Typography>
+            )}
+          </Box>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Please verify that:
+          </Typography>
+          <Box component="ul" sx={{ pl: 2, mt: 1 }}>
+            <Typography component="li" variant="body2" color="text.secondary">
+              All production work is completed
+            </Typography>
+            <Typography component="li" variant="body2" color="text.secondary">
+              Quality checks have been performed
+            </Typography>
+            <Typography component="li" variant="body2" color="text.secondary">
+              Product is ready to ship
+            </Typography>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button
+            onClick={() => setOpenSemiReadyDialog(false)}
+            variant="outlined"
+            disabled={submittingSemiReady}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSemiReadyProduct}
+            variant="contained"
+            color="warning"
+            startIcon={
+              submittingSemiReady ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : (
+                <TbTruckDelivery />
+              )
+            }
+            disabled={submittingSemiReady}
+            autoFocus
+          >
+            {submittingSemiReady ? "Processing..." : "Confirm Semi-Ready"}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <JobCardDrawer
         open={openJobCard}
         onClose={() => setOpenJobCard(false)}
         product={enrichedProduct}
       />
-      
+      <SemiFinishedRRPModal
+        open={openRRPModal}
+        onClose={() => {
+          setOpenRRPModal(false);
+          setRrpData(null);
+          onClose?.();
+          onRefresh?.();
+        }}
+        rrpData={rrpData}
+        saving={savingRRP}
+        onSave={handleSaveRRP}
+      />
+
     </>
 
   );

@@ -88,7 +88,7 @@ const SwitchSubDeptSubmenu = React.memo(function SwitchSubDeptSubmenu({
       sx={{ zIndex: 1400, marginLeft: "2px" }}
     >
       {options.length === 0 ? (
-        <MenuItem disabled>No sub-departments</MenuItem>
+        <MenuItem disabled>No sub-processes available</MenuItem>
       ) : (
         options.map((opt) => (
           <MenuItem
@@ -207,7 +207,7 @@ export default function ActionMenu({
   const { supervisor: supervisorData = [] } = useSelector((state) => state.user);
   // Read active sub-departments for the current department from Redux
   const { data: activeSubDepartments = [] } = useSelector((state) => state.subDepartment);
-  console.log('test sub',activeSubDepartments);
+
 
   const switchSub = useSubmenu();
   const switchSubDept = useSubmenu();   // ← new submenu hook for sub-dept
@@ -279,7 +279,7 @@ export default function ActionMenu({
         onClose();
         closeAllSubmenus();
       } else {
-        console.error("Failed to update sub-department:", res);
+        console.error("Failed to update sub-process:", res);
       }
     },
     [dispatch, product, onRefresh, onClose, closeAllSubmenus]
@@ -400,7 +400,7 @@ export default function ActionMenu({
           >
             <Box display="flex" width="100%" justifyContent="space-between" alignItems="center">
               <Typography minWidth={90} color="text.secondary" fontSize={14}>
-                Sub-Dept:
+                Sub-Process:
               </Typography>
               <Typography fontWeight={600} fontSize={14}>
                 {currentSubDeptName}

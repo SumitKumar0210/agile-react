@@ -91,7 +91,6 @@ export default function TentativeItemDrawer({
 
       const res = await dispatch(storeTentativeItems(formData)).unwrap();
 
-      console.log("Response from API:", res);
 
       successMessage("Tentative items updated successfully");
 

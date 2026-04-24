@@ -71,6 +71,8 @@ const CCSComparison = lazy(() => import("../pages/CCS/CCSComparison"));
 const CCSSheet = lazy(() => import("../pages/CCS/CCSSheet"));
 const MaterialInventory = lazy(() => import("../pages/Vendor/Material/Inventory"));
 const SubDepartment = lazy(() => import("../pages/settings/Department/SubDepartment/SubDepartment"));
+const SemiFurnishedProductInventory = lazy(() => import("../pages/Production/SemiFurnishProduct/SemiFurnishProductInventory"));
+const SemiFurnishedStock = lazy(() => import("../pages/Production/SemiFurnishProduct/SemiFurnishedStock"));
 
 
 const Logs = lazy(() => import("../pages/Logs/Log"));
@@ -174,6 +176,8 @@ const AppRoutes = () => {
         <Route path="/production/production-chain" element={<SecurePage permission="productions.read"><Production /></SecurePage>} />
         <Route path="/production/product-request" element={<SecurePage permission="materials.read"><ProductRequest /></SecurePage>} />
         <Route path="/product/stocks" element={<SecurePage ><ProductStocks permission="product_stocks.read" /></SecurePage>} />
+        <Route path="/production/semi-furnished-products" element={<SecurePage ><SemiFurnishedProductInventory permission="product_stocks.read" /></SecurePage>} />
+        <Route path="/production/semi-furnished-product-stocks" element={<SecurePage ><SemiFurnishedStock permission="product_stocks.read" /></SecurePage>} />
         <Route path="/production/cost-sheet/:id" element={<SecurePage ><CostSheet permission="rrp.read"  /></SecurePage>} />
         <Route path="/production/rrp-calculation" element={<SecurePage ><RRPManagement permission="rrp.read"  /></SecurePage>} />
         <Route path="/product/ready-product" element={<SecurePage ><ReadyProduct /></SecurePage>} />

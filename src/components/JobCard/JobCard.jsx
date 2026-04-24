@@ -50,7 +50,7 @@ const JobCardDrawer = ({ open, onClose, product }) => {
     const departmentName = product?.department?.name ?? "N/A";
     const productName = product?.product?.name ?? "N/A";
 
-    console.log("this is job details:", jobDetails, product);
+    // console.log("this is job details:", jobDetails, product);
 
     const handleAddFinishRow = () => {
         setFinishRows((prev) => [
